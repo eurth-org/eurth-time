@@ -46,7 +46,8 @@ describe('a timeline in a link', () => {
 
   it('packs tightly', () => {
     const text = encodeTimeline(coast);
-    expect(text.length).toBeLessThan(JSON.stringify(coast).length * 0.75);
+    // A third smaller than the timeline written out in full.
+    expect(text.length).toBeLessThan(encodeJson(coast).length * 0.7);
     const lone = normalizeTimeline({ tracks: [{ name: 'T', events: [{ title: 'E', date: '5' }] }] }).timeline;
     expect(JSON.parse(atob(encodeTimeline(lone).slice(2)))).toEqual({ k: [['T', 0, [], [['E', '5']]]] });
   });
