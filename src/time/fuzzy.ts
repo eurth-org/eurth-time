@@ -4,7 +4,7 @@
  * and can be written back the way it was meant.
  */
 import type { DateEngine, YearPart } from './engine';
-import { BIG_BANG_DAYS, MAX_YEAR, countsBack, formatYear, groupDigits, inRange, ordinal, partsOf, yearEnd, yearNumber, yearStart } from './dates';
+import { BIG_BANG_DAYS, MAX_YEAR, countsBack, formatYear, groupDigits, inRange, ordinal, partsOf, yearEnd, yearNumber, yearOf, yearStart } from './dates';
 
 /** A date, as exact or as loose as it is known. Plain JSON. */
 export interface FuzzyDate {
@@ -342,5 +342,17 @@ export function parseDate(engine: DateEngine, input: string): FuzzyDate | null {
   return finish(date);
 }
 
-/** Whether the engine can place this year to the day. */
-export const hasDays = (engine: DateEngine, date: FuzzyDate): boolean => inRange(engine, date.year);
+/**
+ * The date of a day number, as finely as asked: the day, its month or its year. Beyond the
+ * years the engine counts day by day there are only years.
+ */
+export function dateOfDay(engine: DateEngine, days: number, precision: 'day' | 'month' | 'year' = 'day'): FuzzyDate {
+  const year = yearOf(engine, days);
+  if (precision === 'year' || !inRange(engine, year)) return { year };
+  const whole = Math.floor(days);
+  const part = partsOf(engine, year).find((p) => p.days > 0 && whole >= p.start && whole < p.start + p.days);
+  if (part === undefined) return { year };
+  const date: FuzzyDate = { year, [part.kind]: part.index };
+  if (precision === 'day' || (part.kind === 'intercalary' && engine.intercalary[part.index - 1]?.single)) date.day = whole - part.start + 1;
+  return date;
+}
