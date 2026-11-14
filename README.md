@@ -8,7 +8,7 @@ It is one of the free worldbuilding tools by [Eurth](https://eurth.org), a world
 
 ## Status
 
-The core is being built as plain TypeScript with tests; the site comes after `@eurth/style` 1.0.0. The [roadmap](roadmap.md) holds the plan, where work stands and exactly where to pick it up, what each release added, and what's not planned.
+The core is written and tested as plain TypeScript, on `@eurth/calendar` 1.0.0; the site is being built on `@eurth/style`. The [roadmap](roadmap.md) holds the plan, where work stands and exactly where to pick it up, what each release added, and what's not planned.
 
 ## How it fits with the other tools
 

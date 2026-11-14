@@ -8,8 +8,8 @@
  *
  *   https://time.eurth.org/?t=1.eyJuIjoi…&cal=1.eyJtIjpb…
  *
- * `t` is the timeline and `cal` its calendar, the same text cal.eurth.org's "Use in a timeline"
- * link carries; without `cal` the dates are Gregorian. A link is someone else's input: whatever
+ * `t` is the timeline and `cal` its calendar, the same text the calendar maker's "Use in a
+ * timeline" link carries; without `cal` the dates are Gregorian. A link is someone else's input: whatever
  * arrives is cleaned by normalizeTimeline, so a mangled or hostile link gives a tidy timeline
  * or nothing, never an error. A timeline too long for a link is saved in the profile file
  * instead (profile.ts).
@@ -129,7 +129,7 @@ export const linkFits = (link: string): boolean => link.length <= MAX_LINK_LENGT
 
 /**
  * The timeline a link carries. Takes a whole address or just its query string. A link with a
- * calendar and no timeline (as cal.eurth.org's "Use in a timeline" makes) gives an empty
+ * calendar and no timeline (as the calendar maker's "Use in a timeline" makes) gives an empty
  * timeline in that calendar. Null when the link carries neither.
  */
 export function timelineFromLink(link: string): { timeline: Timeline; issues: Issue[] } | null {

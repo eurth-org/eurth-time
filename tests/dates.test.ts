@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BIG_BANG_DAYS, MAX_YEAR, compactNumber, formatYear, groupDigits, ordinal, partsOf, yearEnd, yearOf, yearStart } from '../src/time/dates';
-import { decodeCalendar, encodeCalendar, engineFor, isCalendar } from '../src/time/engine';
-import { cleanSpec } from '../src/time/plain';
+import { cleanCalendar, decodeCalendar, encodeCalendar, engineFor, isCalendar } from '../src/time/engine';
 import { KHARAN, SELUNNAN } from '../src/content/calendars';
 import { ENGINES, between, gregorian, kharan, meridian, random, selunnan, tidewatch } from './helpers/engines';
 
@@ -161,35 +160,25 @@ describe('years as words', () => {
 
 describe('calendars from anywhere', () => {
   it('falls back to Gregorian for anything that is not a calendar', () => {
-    for (const junk of [null, undefined, 7, 'x', [], {}, { months: [] }, { months: 'June' }, { months: [{ name: '', days: 3 }] }, { months: [{ name: 'A', days: 0 }] }]) {
+    for (const junk of [null, undefined, 7, 'x', [], {}, { months: [] }, { months: 'June' }, { months: [{ name: '', days: 3 }] }, { months: [{ days: 30 }] }]) {
       expect(engineFor(junk).name).toBe('Gregorian calendar');
       expect(isCalendar(junk)).toBe(false);
     }
     expect(isCalendar(SELUNNAN)).toBe(true);
   });
 
-  it('drops what is out of bounds and keeps the rest', () => {
-    const spec = cleanSpec({
-      name: `  A\tname${'x'.repeat(200)}`,
-      era: 'E'.repeat(50),
-      months: [{ name: 'One', days: 30 }, { name: 'Bad', days: 1.5 }, 'nope', { name: 'Two', days: 5000 }, { name: 'Three', days: 20, short: 'Thr' }],
-      intercalary: [{ name: 'End', after: 99, days: 2 }, { name: 'Neg', after: 0, days: -1 }],
-      leap: [
-        { every: 4, except: [100, 400, 'x', 3], days: 1, to: { month: 2 } },
-        { every: 0, except: [], days: 1, to: { month: 1 } },
-        { every: 4, except: [], days: 1, to: { month: 9 } },
-        { every: 2, except: [], days: 1, to: { intercalary: 1 } },
-      ],
-    })!;
-    expect(spec.name.length).toBe(80);
-    expect(spec.name.startsWith('A name')).toBe(true);
-    expect(spec.era.length).toBe(20);
-    expect(spec.months).toEqual([{ name: 'One', days: 30 }, { name: 'Three', short: 'Thr', days: 20 }]);
-    expect(spec.intercalary).toEqual([{ name: 'End', after: 2, days: 2 }]);
-    expect(spec.leap).toEqual([
-      { every: 4, except: [100, 400], days: 1, to: { month: 2 } },
-      { every: 2, except: [], days: 1, to: { intercalary: 1 } },
-    ]);
+  it('cleans a calendar before using it, and keeps what it does not need', () => {
+    const clean = cleanCalendar({ name: '  Odd  ', months: [{ name: 'One', days: 30 }, { name: 'Two', days: 20, extra: true }], moons: [{ name: 'Moon', period: 29.5, phase: 0 }] })!;
+    expect(clean.name).toBe('Odd');
+    expect(clean.months.map((month) => month.name)).toEqual(['One', 'Two']);
+    // Moons and holidays are none of a timeline's business, and travel with the calendar all the same.
+    expect(clean.moons).toEqual([{ name: 'Moon', period: 29.5, phase: 0 }]);
+    expect(cleanCalendar(KHARAN)).toEqual(KHARAN);
+    expect(cleanCalendar(KHARAN)).not.toBe(KHARAN);
+    expect(cleanCalendar({ months: [] })).toBeNull();
+    // One definition, one engine.
+    expect(engineFor(SELUNNAN)).toBe(engineFor(SELUNNAN));
+    expect(engineFor(null)).toBe(engineFor(undefined));
     const engine = engineFor({ months: [{ name: 'One', days: 30 }], leap: [{ every: 7, except: [9_999_991, 9_999_973], days: 1, to: { month: 1 } }] });
     expect(engine.parts(7)[0]!.days).toBe(31);
   });

@@ -192,7 +192,9 @@ describe('what Time reads from the rest of a profile', () => {
     })!;
     const engine = engineFor(simple);
     expect([engine.name, engine.era, engine.months.length, engine.meanYear]).toEqual(['Lantern Reckoning', 'LR', 2, 59]);
-    for (const nothing of [null, 'x', {}, { months: [] }, { months: [{ name: 'No days' }] }, { definition: { months: [] } }]) expect(calendarFromSection(nothing)).toBeNull();
+    for (const nothing of [null, 'x', {}, { months: [] }, { months: [{ days: 30 }] }, { definition: { months: [] } }]) expect(calendarFromSection(nothing)).toBeNull();
+    // The profile's schema lets a month go without its days; the engine gives it thirty.
+    expect(calendarFromSection({ months: [{ name: 'No days' }] })!.months).toEqual([{ name: 'No days', days: 30 }]);
   });
 
   it('turns reigns into spans, when Dynasty gives them dates', () => {

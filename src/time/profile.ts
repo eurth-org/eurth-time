@@ -16,7 +16,7 @@
  */
 import { yearOf } from './dates';
 import { describeTimeline } from './describe';
-import { engineFor, isCalendar, type CalendarData, type DateEngine } from './engine';
+import { cleanCalendar, engineFor, isCalendar, type CalendarData, type DateEngine } from './engine';
 import { cleanDate, compareDates, dateRange, parseDate, type FuzzyDate } from './fuzzy';
 import { extentOf } from './layout';
 import { LIMITS, type Span, type Timeline, type Track } from './model';
@@ -113,14 +113,12 @@ export function fromProfileSection(section: unknown, calendar: CalendarData = nu
 /**
  * The calendar in a profile's "calendar" section, in @eurth/calendar's shape: the full
  * definition when Calendar wrote one, otherwise a plain calendar from the section's simple
- * fields (months with their days, era). Null when there is no usable calendar, which means
- * Gregorian.
+ * fields (months, weekdays, era). Null when there is no usable calendar, which means Gregorian.
  */
 export function calendarFromSection(section: unknown): CalendarData {
   if (!isRecord(section)) return null;
-  if (isCalendar(section.definition)) return JSON.parse(JSON.stringify(section.definition)) as Record<string, unknown>;
-  const simple = { name: section.name, era: section.era, months: section.months, weekdays: section.weekdays };
-  return isCalendar(simple) ? (JSON.parse(JSON.stringify(simple)) as Record<string, unknown>) : null;
+  if (isCalendar(section.definition)) return cleanCalendar(section.definition);
+  return cleanCalendar({ name: section.name, era: section.era, months: section.months, weekdays: section.weekdays });
 }
 
 /** A date as another tool might write it: a year as a number, the compact text, a date in words, or the object. */

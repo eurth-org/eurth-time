@@ -1,17 +1,25 @@
 /**
- * The one door between Time and whatever counts its days.
+ * The one door between Time and what counts its days: @eurth/calendar.
  *
- * Everything in Time works in day numbers: a whole number, 0 for day 1 of year 1, the same count
+ * Everything in Time works in day numbers: a whole number, 0 for day 1 of year 1, the count
  * @eurth/calendar uses. A DateEngine is the little a timeline needs to know about a calendar to
  * turn dates into day numbers and back: where each year starts, what a year is made of, and what
- * its months and eras are called.
- *
- * Until @eurth/calendar 1.0.0 is released, engineFor() builds a plain engine of Time's own
- * (plain.ts) from the same calendar definition. When the package is out, this file is the only
- * one that changes: engineFor() wraps the package's Calendar, and the codec below hands over to
- * encodeCalendar and decodeCalendar. See roadmap.md, step 4h.
+ * its months and eras are called. engineFor() makes one from a calendar definition; every other
+ * file in Time talks to the engine and never to the package, so this is the only file that
+ * changes if the package ever does.
  */
-import { cleanSpec, GREGORIAN_SPEC, plainEngine } from './plain';
+import {
+  createCalendar,
+  decodeCalendar as decodePacked,
+  encodeCalendar as encodePacked,
+  GREGORIAN,
+  normalizeCalendar,
+  shortName,
+  type Calendar,
+  type CalendarDefinition,
+} from '@eurth/calendar';
+
+export { CALENDAR_PARAM } from '@eurth/calendar';
 
 /** One stretch of a year: a month, or a block of days that belongs to no month. */
 export interface YearPart {
@@ -50,30 +58,64 @@ export interface DateEngine {
   parts(year: number): YearPart[];
 }
 
-/** A calendar definition as it travels: plain JSON, in @eurth/calendar's shape. Null means Gregorian. */
-export type CalendarData = Record<string, unknown> | null;
+/** A calendar definition, as @eurth/calendar has it. Null means the Gregorian calendar. */
+export type CalendarData = CalendarDefinition | null;
 
-const gregorian = plainEngine(GREGORIAN_SPEC);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Whether a value can be used as a calendar: it has at least one month with a name. The
+ * package would make a calendar out of anything, by adding a month where there is none; a
+ * timeline is better served by the Gregorian calendar than by a year of one made-up month.
+ */
+export function isCalendar(calendar: unknown): calendar is Record<string, unknown> {
+  return isRecord(calendar) && Array.isArray(calendar.months) && calendar.months.some((month) => isRecord(month) && typeof month.name === 'string' && month.name.trim() !== '');
+}
+
+/** A clean copy of a calendar from anywhere, as plain data, or null when it is not a calendar. Never throws. */
+export function cleanCalendar(calendar: unknown): CalendarData {
+  if (!isCalendar(calendar)) return null;
+  try {
+    return JSON.parse(JSON.stringify(normalizeCalendar(calendar).calendar)) as CalendarDefinition;
+  } catch {
+    return null;
+  }
+}
+
+function wrap(calendar: Calendar): DateEngine {
+  const definition = calendar.definition;
+  return {
+    name: definition.name,
+    era: definition.era,
+    eraBefore: definition.eraBefore,
+    months: definition.months.map((month) => ({ name: month.name, short: shortName(month.name, month.short) })),
+    intercalary: definition.intercalary.map((block, i) => ({ name: block.name, single: calendar.longestIntercalary(i + 1) <= 1 })),
+    minYear: calendar.minYear,
+    maxYear: calendar.maxYear,
+    meanYear: calendar.meanYear,
+    yearStart: (year) => calendar.yearStart(year),
+    yearOf: (days) => calendar.yearOf(days),
+    parts: (year) => calendar.year(year).parts.map((part) => ({ kind: part.kind, index: part.index, name: part.name, days: part.days, start: part.start })),
+  };
+}
+
+const gregorian = wrap(createCalendar(GREGORIAN));
+const engines = new WeakMap<object, DateEngine>();
 
 /**
  * The engine for a calendar definition. Null, or anything that is not a usable calendar, gives
- * the Gregorian calendar. Never throws.
+ * the Gregorian calendar. Never throws. Asking twice for the same definition gives the same engine.
  */
 export function engineFor(calendar: unknown): DateEngine {
-  const spec = cleanSpec(calendar);
-  return spec === null ? gregorian : plainEngine(spec);
+  if (!isCalendar(calendar)) return gregorian;
+  let engine = engines.get(calendar);
+  if (engine === undefined) {
+    engine = wrap(createCalendar(calendar));
+    engines.set(calendar, engine);
+  }
+  return engine;
 }
-
-/** Whether a value can be used as a calendar. */
-export function isCalendar(calendar: unknown): calendar is Record<string, unknown> {
-  return cleanSpec(calendar) !== null;
-}
-
-/** The query parameter that carries a calendar from cal.eurth.org ("Use in a timeline"). */
-export const CALENDAR_PARAM = 'cal';
-
-/** The longest calendar text read from a link. */
-export const MAX_CALENDAR_TEXT = 60_000;
 
 const toBase64Url = (text: string): string => {
   let binary = '';
@@ -103,16 +145,13 @@ export function decodeJson(text: unknown, maxLength: number): { version: number;
   }
 }
 
-/**
- * A calendar as the text of a `cal` parameter, and back.
- * For now this is the definition as it stands; from step 4h it is @eurth/calendar's packed form.
- */
-export function encodeCalendar(calendar: Record<string, unknown>): string {
-  return encodeJson(calendar);
+/** A calendar as the text of a `cal` parameter: the packed form the calendar maker's "Use in a timeline" link carries. */
+export function encodeCalendar(calendar: CalendarDefinition): string {
+  return encodePacked(calendar);
 }
 
-export function decodeCalendar(text: unknown): Record<string, unknown> | null {
-  const decoded = decodeJson(text, MAX_CALENDAR_TEXT);
-  if (decoded === null || decoded.version !== 1) return null;
-  return isCalendar(decoded.value) ? decoded.value : null;
+/** The calendar in the text of a `cal` parameter, or null when there is none to be read. */
+export function decodeCalendar(text: unknown): CalendarData {
+  const decoded = decodePacked(text);
+  return decoded === null ? null : cleanCalendar(decoded.calendar);
 }

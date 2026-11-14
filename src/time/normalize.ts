@@ -4,7 +4,7 @@
  * list cut to size, every date made to fit the calendar, every link https. It never throws, and
  * it says what it had to change.
  */
-import { engineFor, isCalendar, type CalendarData, type DateEngine } from './engine';
+import { cleanCalendar, engineFor, type CalendarData, type DateEngine } from './engine';
 import { cleanDate, dateRange, type FuzzyDate } from './fuzzy';
 import { LIMITS, TIMELINE_VERSION, TRACK_KINDS, type Era, type Link, type Span, type TimeEvent, type Timeline, type Track, type TrackKind } from './model';
 
@@ -83,18 +83,14 @@ function readStretch(
 
 function readCalendar(value: unknown, issues: Issue[]): CalendarData {
   if (value === null || value === undefined) return null;
-  let copy: unknown;
+  let copy: CalendarData = null;
   try {
-    const json = JSON.stringify(value);
-    if (json.length > LIMITS.calendar) throw new Error('too long');
-    copy = JSON.parse(json);
+    // A calendar that cannot be written as JSON, or is absurdly long, is no calendar.
+    if (JSON.stringify(value).length <= LIMITS.calendar) copy = cleanCalendar(value);
   } catch {
     copy = null;
   }
-  if (!isCalendar(copy)) {
-    issues.push({ path: 'calendar', message: 'The calendar could not be read, so the dates are shown in the Gregorian calendar.' });
-    return null;
-  }
+  if (copy === null) issues.push({ path: 'calendar', message: 'The calendar could not be read, so the dates are shown in the Gregorian calendar.' });
   return copy;
 }
 
