@@ -6,7 +6,9 @@ Three parts: what comes next, what each release added (newest first), and what's
 
 ## Where to pick up
 
-**Now: the plan below is written and waiting for Stijn's go-ahead. Nothing is built yet.** Once he agrees, start at step 4a.
+**Now: step 4, the core. 4a is done; carry on at 4b.** Stijn agreed to the plan on 14 November 2026. Each finished part is ticked below.
+
+Run `npm install`, then `npm run check` and `npm test`: both must pass before and after every part.
 
 Check these two before each working session, because they decide what may be built:
 
@@ -21,9 +23,9 @@ Check these two before each working session, because they decide what may be bui
 
 Everything lives in `src/time/` and `src/content/`, tested with Vitest in `tests/`. No Astro, Svelte or `@eurth/style` in this step. Commit and push after each letter, and tick it off here.
 
-- [ ] **4a. Skeleton and dates.** `package.json` (TypeScript and Vitest only, Node 22), `tsconfig.json`, `vitest.config.ts`, `LICENSE` (Apache 2.0), `docs/feedback-log.md`, CI that checks and tests.
+- [x] **4a. Skeleton and dates.** `package.json` (TypeScript and Vitest only, Node 22), `tsconfig.json`, `vitest.config.ts`, `LICENSE` (Apache 2.0), `docs/feedback-log.md`, CI that checks and tests.
   - `dates.ts`: the small interface the rest of the tool sees, `DateEngine`: day number of a date and back, the start and length of a year, the parts of a year (months and days outside the months), year labels ("1022 FS", "3 Before the Founding"). A day number is a whole number, 0 for day 1 of year 1, the same count `@eurth/calendar` uses, so its `Calendar` drops in behind the interface without touching anything else.
-  - `gregorian.ts`: a built-in proleptic Gregorian engine behind that interface, the fallback when no calendar is loaded.
+  - `engine.ts` holds the interface and `engineFor(calendar)`, the one place that changes when the package arrives. `plain.ts` is a stand-in engine of Time's own that reads the same calendar definition (months, days outside the months, leap rules), so invented calendars work today; without a calendar it is Gregorian.
   - Deep time: beyond the engine's range (the calendar engine stops at ten million years either way) a date is a year only, placed by the mean length of the year. That is what lets someone date an event before the Big Bang.
   - `fuzzy.ts`: dates as a person writes them. Exact to the day, the month or the year; "c. 1650"; "1650s"; "17th century". Each becomes a first day, a last day and a way to write it back. Parsing and formatting both ways, tested against all three example calendars.
 - [ ] **4b. The model.** `model.ts`: a timeline is a title, a calendar (or none, meaning Gregorian), eras, and tracks; a track has spans (label, from, to or "ongoing", text, links, a tone) and events (title, date, text, links). `normalize.ts` cleans anything that arrives from a link or a file: caps on counts and lengths, https links only, dates that don't exist put right or dropped, with a list of what was changed. Never throws. Add, edit, move and remove as pure functions that give back a new timeline, so undo is a list of timelines.
@@ -32,7 +34,7 @@ Everything lives in `src/time/` and `src/content/`, tested with Vitest in `tests
 - [ ] **4e. Saving.** `link.ts`: the timeline packed into `?t=1.<base64url>` (short keys, lists, nothing at its default), with the calendar beside it as `?cal=`, the same text cal.eurth.org's "Use in a timeline" link carries. A timeline too long for a link (over 8,000 characters) says so and points to the profile file. `profile.ts`: the `timeline` section of the profile: the schema's own fields as a digest any tool can quote (`title`, `startYear`, `endYear`, up to 200 `events`), and the whole timeline under `definition`, the way Calendar keeps its whole calendar. Reads `calendar` (through `@eurth/calendar`'s own reader once released) and `dynasty`.
 - [ ] **4f. Exports.** `svg.ts`: the visible range as a standalone SVG (colours handed in, so the site passes the style tokens; every span carries its label; the description inside as `<title>` and `<desc>`). PNG is that SVG drawn to a canvas in the site. `wikitext.ts`: a sortable wikitable for a history section. `csv.ts`: one row per era, span and event. `embed.ts`: the iframe snippet for eurth.org.
 - [ ] **4g. Content.** `src/content/guide.ts`: how to build a believable history: causes and consequences, parallel tracks, how long things really take (reigns, wars, dynasties, building a cathedral, crossing an ocean), with sources and a last-updated date. `glossary.ts`: some 30 terms (era, epoch, regnal year, interregnum, circa, floruit, terminus post quem, anachronism and so on). `examples.ts`: three timelines in three calendars: Gregorian, one of Calendar's invented presets with an Earth link, and one with days outside the months and no link to Earth. Tests render and export all three.
-- [ ] **4h. Plug in the engine.** When `@eurth/calendar` 1.0.0 is released: install it from GitHub (`github:eurth-org/eurth-calendar#semver:^1`), put its `Calendar` behind `DateEngine`, read calendars from `?cal=` and from the profile, and run the whole test suite against its presets. Drop `gregorian.ts` if the package's Gregorian preset covers it.
+- [ ] **4h. Plug in the engine.** When `@eurth/calendar` 1.0.0 is released: install it from GitHub (`github:eurth-org/eurth-calendar#semver:^1`), put its `Calendar` behind `DateEngine`, read calendars from `?cal=` and from the profile, and run the whole test suite against its presets. Then delete `plain.ts` and make `src/content/calendars.ts` re-export the package's presets.
 
 ### Step 5: the site (only after `@eurth/style` 1.0.0)
 

@@ -1,0 +1,21 @@
+# Check and test on every push and pull request. Once the site is started from the
+# @eurth/style starter (roadmap, step 5), this gives way to the suite's shared workflow.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run check
+      - run: npm test

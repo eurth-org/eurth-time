@@ -8,7 +8,7 @@ It is one of the free worldbuilding tools by [Eurth](https://eurth.org), a world
 
 ## Status
 
-Planning. Nothing is built yet. The [roadmap](roadmap.md) holds the plan, where work stands and exactly where to pick it up, what each release added, and what's not planned.
+The core is being built as plain TypeScript with tests; the site comes after `@eurth/style` 1.0.0. The [roadmap](roadmap.md) holds the plan, where work stands and exactly where to pick it up, what each release added, and what's not planned.
 
 ## How it fits with the other tools
 
@@ -18,6 +18,14 @@ Planning. Nothing is built yet. The [roadmap](roadmap.md) holds the plan, where 
 
 ## Development
 
-Node 22 or newer. The commands arrive with the first code (step 4a of the roadmap).
+Node 22 or newer.
+
+```sh
+npm install
+npm run check   # types
+npm test        # Vitest
+```
+
+The code is in `src/time/` (the timeline's logic, no DOM) and `src/content/` (guide, glossary, examples); the tests are in `tests/`.
 
 Made by Orioni for [Eurth](https://eurth.org). Apache 2.0.
