@@ -6,16 +6,16 @@ Three parts: what comes next, what each release added (newest first), and what's
 
 ## Where to pick up
 
-**Now: step 4, the core. 4a to 4e are done, and so are the three example timelines of 4g; carry on at 4f.** Stijn agreed to the plan on 14 November 2026. Each finished part is ticked below.
+**Now: step 4, the core. 4a to 4f are done, and so are the three example timelines of 4g; carry on with the guide and glossary of 4g, then 4h. Both gates are open (see the table), so step 5 follows straight after.** Stijn agreed to the plan on 14 November 2026. Each finished part is ticked below.
 
 Run `npm install`, then `npm run check` and `npm test`: both must pass before and after every part.
 
 Check these two before each working session, because they decide what may be built:
 
-| Gate | How to check | State on 14 November 2026 |
+| Gate | How to check | State late on 14 November 2026 |
 | --- | --- | --- |
-| `@eurth/calendar` 1.0.0 | `gh release list -R eurth-org/eurth-calendar` | Not released. The engine exists only in the Calendar session's working folder. Until the release, dates stay behind `src/time/dates.ts` (step 4a). |
-| `@eurth/style` 1.0.0 | `gh release list -R eurth-org/eurth-style` | Not released, and `HANDBOOK.md` isn't written yet. Until the release: no site, no pages, no styles. The rules used for this plan are the handbook section of eurth-style's own brief. |
+| `@eurth/calendar` 1.0.0 | `gh release list -R eurth-org/eurth-calendar` | **Released** (`v1.0.0`). Step 4h can go ahead. |
+| `@eurth/style` 1.0.0 | `gh release list -R eurth-org/eurth-style` | **Released** (`v1.0.0`, then `v1.0.1`), with `HANDBOOK.md` and the starter template. Step 5 can go ahead. |
 
 ## Next
 
@@ -32,7 +32,7 @@ Everything lives in `src/time/` and `src/content/`, tested with Vitest in `tests
 - [x] **4c. The axis and the layout.** `axis.ts`: a view is a first day, a last day and a width. Tick levels from a thousand million years down to days; which levels show at a zoom, and how visible each label is (0 to 1, by the space between ticks). That number is the signature touch: labels fade in and out as you zoom, like place names on a map. Zoom about a point, pan, fit to the content, clamp. `layout.ts`: spans that overlap in a track go on rows of their own; event labels that would collide give way by date order, the marker always stays; eras across the top. Pure numbers out, no DOM.
 - [x] **4d. Words and keys.** `describe.ts`: the whole timeline as text: a summary line, the eras, then each track with its spans and events in date order. One source for the screen-reader version, the search-engine version and "Copy description". `nav.ts`: the order the keyboard walks: next and previous in time, up and down a track, first and last, and which card is open.
 - [x] **4e. Saving.** `link.ts`: the timeline packed into `?t=1.<base64url>` (short keys, lists, nothing at its default), with the calendar beside it as `?cal=`, the same text cal.eurth.org's "Use in a timeline" link carries. A timeline too long for a link (over 8,000 characters) says so and points to the profile file. `profile.ts`: the `timeline` section of the profile: the schema's own fields as a digest any tool can quote (`title`, `startYear`, `endYear`, up to 200 `events`), and the whole timeline under `definition`, the way Calendar keeps its whole calendar. Reads `calendar` (through `@eurth/calendar`'s own reader once released) and `dynasty`.
-- [ ] **4f. Exports.** `svg.ts`: the visible range as a standalone SVG (colours handed in, so the site passes the style tokens; every span carries its label; the description inside as `<title>` and `<desc>`). PNG is that SVG drawn to a canvas in the site. `wikitext.ts`: a sortable wikitable for a history section. `csv.ts`: one row per era, span and event. `embed.ts`: the iframe snippet for eurth.org.
+- [x] **4f. Exports.** `svg.ts`: the visible range as a standalone SVG (colours handed in, so the site passes the style tokens with `resolveColors`, as the handbook asks; every span carries its label; the description inside as `<title>` and `<desc>`). PNG is that SVG drawn to a canvas in the site. `wikitext.ts`: a sortable wikitable for a history section. `csv.ts`: one row per era, span and event. `embed.ts`: the iframe snippet for eurth.org.
 - [ ] **4g. Content.** `src/content/guide.ts`: how to build a believable history: causes and consequences, parallel tracks, how long things really take (reigns, wars, dynasties, building a cathedral, crossing an ocean), with sources and a last-updated date. `glossary.ts`: some 30 terms (era, epoch, regnal year, interregnum, circa, floruit, terminus post quem, anachronism and so on). `examples.ts`: three timelines in three calendars: Gregorian, one of Calendar's invented presets with an Earth link, and one with days outside the months and no link to Earth. Tests render and export all three.
 - [ ] **4h. Plug in the engine.** When `@eurth/calendar` 1.0.0 is released: install it from GitHub (`github:eurth-org/eurth-calendar#semver:^1`), put its `Calendar` behind `DateEngine`, read calendars from `?cal=` and from the profile, and run the whole test suite against its presets. Then delete `plain.ts` and make `src/content/calendars.ts` re-export the package's presets.
 
