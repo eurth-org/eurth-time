@@ -147,8 +147,8 @@ const SELUNNA = {
       kind: 'dynasty',
       spans: [
         { label: 'Maelis I', from: '313', to: '351-10-3', tone: 2, text: 'First of the house. Thirty-eight years, which set a standard her heirs found tiring.' },
-        { label: 'Corvan the Brief', from: '351-10-3', to: '352-2-19', tone: 3, text: 'Four months and a bad winter.' },
-        { label: 'Maelis II', from: '352-2-19', to: '389', tone: 2, text: '' },
+        { label: 'Corvan the Brief', from: '351-10-3', to: '352-2-3', tone: 3, text: 'Five months and a bad winter.' },
+        { label: 'Maelis II', from: '352-2-3', to: '389', tone: 2, text: '' },
         { label: 'Edric the Builder', from: '389', to: '~420', tone: 3, text: 'The records of his last years burned with the old archive, so the end of the reign is a careful guess.' },
       ],
       events: [{ title: 'The old archive burns', date: '~421', text: 'Which is why so much before this date is marked "c."' }],
