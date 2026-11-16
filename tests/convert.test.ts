@@ -102,10 +102,9 @@ describe('a timeline in another calendar', () => {
     const back = convertTimeline(turned.timeline, SELUNNAN)!.timeline;
     expect(back.tracks[0]!.events[0]!.date).toEqual(selunna.tracks[0]!.events[0]!.date);
     expect(back.tracks[1]!.spans[1]).toEqual(selunna.tracks[1]!.spans[1]);
-    // The Gregorian calendar by name is the same calendar as none at all, day for day.
-    const named = convertTimeline(coast, GREGORIAN)!;
-    expect(named.converted).toBe(true);
-    expect(named.timeline.tracks).toEqual(coast.tracks);
+    // The Gregorian calendar by name is the same calendar as none at all: nothing to turn.
+    expect(convertTimeline(coast, GREGORIAN)).toEqual({ timeline: coast, converted: false });
+    expect(sameCalendar(null, GREGORIAN)).toBe(true);
   });
 
   it('refuses when one of the calendars stands alone', () => {

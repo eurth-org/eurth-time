@@ -116,6 +116,9 @@ function wrap(calendar: Calendar): DateEngine {
 }
 
 const gregorian = wrap(createCalendar(GREGORIAN));
+
+/** The Gregorian calendar's own definition: what a timeline with no calendar is dated in. */
+export const GREGORIAN_CALENDAR: CalendarDefinition = GREGORIAN;
 const engines = new WeakMap<object, DateEngine>();
 
 /**

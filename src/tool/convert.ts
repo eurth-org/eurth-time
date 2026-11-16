@@ -11,14 +11,17 @@
  * is a round number in one calendar and not in the other, becomes "about" the year of its middle.
  */
 import type { CalendarData, DateEngine } from './engine';
-import { engineFor } from './engine';
+import { GREGORIAN_CALENDAR, engineFor } from './engine';
 import { dateOfDay, dateRange, precisionOf, type FuzzyDate } from './fuzzy';
 import type { Timeline } from './model';
 import { normalizeTimeline } from './normalize';
 
-/** Whether two calendar definitions are one and the same. Null is the Gregorian calendar. */
+/**
+ * Whether two calendar definitions are one and the same. No calendar at all is the Gregorian
+ * calendar, so it is the same as the Gregorian calendar by name.
+ */
 export function sameCalendar(a: CalendarData, b: CalendarData): boolean {
-  return a === b || JSON.stringify(a) === JSON.stringify(b);
+  return a === b || JSON.stringify(a ?? GREGORIAN_CALENDAR) === JSON.stringify(b ?? GREGORIAN_CALENDAR);
 }
 
 /** Whether dates in one calendar can be turned into the other: both are tied to Earth, or they are the same engine. */
