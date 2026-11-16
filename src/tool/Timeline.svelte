@@ -54,6 +54,7 @@ import { timelineCsv, timelineFromCsv } from './csv';
 import { SHEET_CHOICES, printSheets } from './print';
   import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from './ops';
   import { readProfile, toProfileSection } from './profile';
+import { reviewTimeline } from './review';
   import { pictureName, timelineSvg } from './svg';
   import { TONES, svgTheme } from './theme';
   import { timelineWikitext } from './wikitext';
@@ -102,6 +103,7 @@ import { SHEET_CHOICES, printSheets } from './print';
   const card = $derived(selected === null ? null : describeItem(timeline, engine, selected));
   const track = $derived(selectedTrack === null ? null : (timeline.tracks[selectedTrack] ?? null));
   const empty = $derived(timeline.tracks.length === 0 && timeline.eras.length === 0);
+  const findings = $derived(embed ? [] : reviewTimeline(timeline, engine));
 
   // The link. The plain address is the starting example; anything else, an emptied timeline
   // included, carries itself.
@@ -887,6 +889,32 @@ import { SHEET_CHOICES, printSheets } from './print';
     </section>
   {/if}
 
+  {#if !embed && !empty}
+    <section class="eu-card" aria-labelledby="time-check">
+      <h3 id="time-check" class="eu-kicker">Reality check</h3>
+      {#if findings.length === 0}
+        <p>Nothing stands out against how long things have really taken. That is not the same as believable: the <a href="/guide/">guide</a> has the rest.</p>
+      {:else}
+        <p class="eu-muted">Where this history differs from how things have gone on Earth. It may be the point; it is worth knowing.</p>
+        <ul class="findings">
+          {#each findings as finding, index (`${finding.id}${index}`)}
+            <li>
+              <p>{finding.message}</p>
+              {#if finding.refs.length > 0}
+                <div class="eu-row">
+                  {#each finding.refs.slice(0, 4) as ref (`${ref.kind}${ref.kind === 'era' ? '' : ref.track}-${ref.index}`)}
+                    <button type="button" class="eu-btn eu-btn--quiet" onclick={() => show(ref)}>Show {titleOf(getItem(timeline, ref) ?? { title: 'it', date: { year: 1 }, text: '', links: [] })}</button>
+                  {/each}
+                </div>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+        <p class="eu-help">The figures behind these are in the <a href="/guide/#durations">guide</a>, with their sources.</p>
+      {/if}
+    </section>
+  {/if}
+
   <section class="eu-card words" aria-labelledby="time-words">
     <h3 id="time-words" class="eu-kicker">The timeline in words</h3>
     <p>{description.summary}</p>
@@ -1020,6 +1048,19 @@ import { SHEET_CHOICES, printSheets } from './print';
     min-height: var(--size-target);
     font: var(--type-label);
     cursor: pointer;
+  }
+
+  .findings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .findings p {
+    margin: 0 0 var(--space-1);
   }
 
   .keys {

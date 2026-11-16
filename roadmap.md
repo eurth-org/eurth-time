@@ -37,7 +37,6 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 
 ### Later
 
-- **A reality check,** as Flagwright checks a flag: reigns of ninety years, a cathedral built in a summer, news that crosses an ocean in a day. The guide's table of how long things take is already data (`src/content/guide.ts`).
 - **A second calendar on the same axis,** so two nations can each read the timeline in their own reckoning.
 - **Group and collapse tracks** (a continent, an alliance).
 - **Drag an event or the end of a span** to change its date, with the keyboard doing the same.
@@ -48,6 +47,7 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 
 Still not live: the door is 17 December.
 
+- **A reality check,** as Flagwright checks a flag. Under the timeline, a list of where the history differs from how things have gone on Earth, each with a button that shows the thing in question: a reign longer than any on record, reigns all of a length or too long on average, a war that runs for generations, a cathedral built in a few years, spans that all last a round number, old dates known to the day, a long past with no doubt in it, and a history made only of events. Lengths are measured in Earth's years, whatever the calendar, and written in the calendar's own. It can't say a history is good; it says what is worth a second look.
 - **Print.** What is on screen, on one sheet or spread across up to twelve, each a page of its own with the title, the dates it covers and its place in the run. Spread wider, labels the screen had no room for find room. It goes through the browser's own print dialogue, which is also how it becomes a PDF; paper is light, so the sheets are drawn in the light theme.
 - **Tracks from someone else's timeline.** Paste a link or pick a profile, and its tracks and eras join yours; theirs stays as it was. That is how a shared world's history is built without accounts. When the two timelines are in different calendars and both are tied to Earth, the newcomer's dates are turned into yours: a day stays the same day, a month or a year becomes the one its middle falls in, and a decade or century becomes "about" a year. When either calendar has no link to Earth, Time says so and adds nothing.
 - **Import from CSV.** The columns the export writes, in any order, or a sheet typed by hand with a title and a date in each row; dates are read from the compact code when it is there, otherwise from the words, in the timeline's calendar. Rows join the track of their name or start a new one, and nothing already there is added twice. What can't be dated is left out, and undo takes the whole import out again.
