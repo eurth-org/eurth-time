@@ -6,7 +6,7 @@ Three parts: what comes next, what each release added (newest first), and what's
 
 ## Where to pick up
 
-**The tool is built and CI is green on `main`: types, build, tests, axe, the smoke test in a real browser, and Lighthouse. It waits for its door: 17 December 2026, 00:00 in Brussels.** What is left is under "Before the door" below; none of it is building.
+**The tool is built, at 0.2.0, and CI is green on `main`: types, build, tests, axe, the smoke test in a real browser, and Lighthouse. It waits for its door: 17 December 2026, 00:00 in Brussels.** What is left is under "Before the door" (none of it is building) and under "Later, and what each waits for" (two things that can't be built here yet).
 
 Before any change: `npm install`, then `npm run check`, `npm run build`, `npm test` and `npm run axe`. All four must pass before and after. Astro wants a newer Node than 22.14: put Homebrew's `node@26` first on `PATH` if the default is older (`export PATH="/opt/homebrew/opt/node@26/bin:$PATH"`). `HANDBOOK.md` in `node_modules/@eurth/style/` wins over anything here.
 
@@ -23,7 +23,7 @@ Where things are:
 
 - **A bare page for embeds, in `@eurth/style`.** The handbook's checks ask every page for the shared shell, so the embed page (`/embed/?t=…`) carries the header and footer inside its frame. It works and it is honest, but a timeline in a forum post wants less. The handbook is silent on embeds, so this is a request to `@eurth/style` (a `Page` without the shell, still under the same headers), not something to work around here.
 - **Try it with the real calendar maker,** once that site exists: its "Use in a timeline" link should open `time.eurth.org/?cal=…`, and Time should show an empty timeline in that calendar. The reading side is tested against the package's own packed form.
-- **Hands and ears.** Pinch to zoom on a real phone, and a pass with a screen reader over the chart's listbox. Both are built to the standards and checked by axe; neither has been tried on a device.
+- **Hands and ears.** Pinch to zoom and dragging a thing along the axis on a real phone, a pass with a screen reader over the chart's listbox, and a real sheet of paper from the print dialogue. All are built to the standards, checked by axe and tried with a mouse and a keyboard in a desktop browser; none has been tried on a device.
 - **The launch** is `.github/workflows/launch.yml`: it starts at 22:30 UTC on 16 December 2026, builds for the door's time, waits for `LAUNCH_AT` and deploys. If it hasn't started by 22:45 UTC, start it by hand. Afterwards: delete that file, submit the sitemap, and tell the forum.
 
 ### Decided
@@ -35,14 +35,16 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 3. **"Collaborators can add their nation as a track"** (on the mock-up, not in the brief) came after the first version, in 0.2.0: paste a friend's link or pick their profile, and their tracks join yours.
 4. **The page is called "Timeline",** as the brief has it, not "Maker" as on the mock-up.
 
-### Later
+### Later, and what each waits for
 
-- **Pictures on cards** (a link to an image, shown in an `<img>`).
-- **A link preview picture per timeline** (a Worker would draw it).
+Neither of these can be built inside this repository as things stand. Each says what would have to change first, and who decides.
 
-## 16 November 2026: 0.2.0, the first of the "Later" list
+- **Pictures on cards** (a link to an image, shown in an `<img>`). *Waits for `@eurth/style`, and a decision from Stijn.* The suite's content security policy, which `@eurth/style` writes for every tool, lets a page show images from the site itself and nowhere else (`img-src 'self' data: blob:`), and the handbook's first privacy rule is that a tool makes no request to any other address. A picture fetched from a wiki or a forum breaks both. Two ways forward, both outside this repository's say: the handbook and the policy allow images from named Eurth addresses; or pictures are not linked but carried, picked from the device, made small and kept inside the profile file. The second needs no change to the policy, but a timeline with pictures would no longer fit in a link, which is a change to how Time saves; it is a new design, not this item, so it was not built on a guess.
+- **A link preview picture per timeline.** *Waits for a Worker, and Stijn's word that Time may have one.* A preview picture has to be at an address a forum or a chat app can fetch, drawn from the timeline in the link: that is code running on the server for every such request. Time is static files only, as the handbook asks of every tool whose brief does not say otherwise, and the free plan's limits (100,000 Worker requests a day and 10 ms of processor time each, for the whole account) are shared by all the tools. The drawing code is ready for it: `timelineSvg` runs anywhere and needs no browser. What is missing is the decision, a Worker script in `wrangler.jsonc`, and a way to turn the SVG into the PNG that link previews want.
 
-Still not live: the door is 17 December.
+## 16 November 2026: 0.2.0, the "Later" list
+
+Eight of the ten things that were under "Later", built one at a time. Still not live: the door is 17 December.
 
 - **Carry things along the axis.** The thing whose card is open can be dragged to another date, and a span or an era by either end; the chart shows it as it goes and records it once, when it is let go, so one undo puts it back. With the keyboard, Alt with Left or Right moves the thing by a day, a month or a year as the zoom has it, and Alt and Shift moves only a span's end. A date stays as fine as it was given: a day moves by days, a year by years, a decade by decades (and correctly across year 1, where round numbers count the other way). An end can never pass its start.
 - **Groups of tracks.** Give a track a group (a continent, an alliance): neighbouring tracks of one group are headed by its name, and pressing the name folds them away into a single hollow bar that covers the stretch of time they span and says how much is under it. Folded tracks are left out of the keyboard's round, the pictures and the printed sheets; choosing one of their things in the words below brings the group back. The group travels in the link, the profile and the CSV; what is folded is for the visit only.

@@ -13,9 +13,13 @@ What's next, what each release added and what's not planned is in the [roadmap](
 - **Add** a track, then events and spans on it. A new thing lands in the middle of what is on screen and opens for editing.
 - **Type dates as you would write them:** `17 Harvestmoon 1022 FS`, `March 1869`, `1789`, `44 BCE`. For a date you only half know: `c. 1650`, `1650s`, `17th century`.
 - **Move through time:** drag to slide, pinch or hold Ctrl and use the wheel to zoom, or use the buttons. With the keyboard: arrow keys from one thing to the next, Enter for its card, plus and minus to zoom, nought to see everything.
-- **Your own calendar:** load a nation profile that has one, or follow a "Use in a timeline" link from the calendar maker. Without one, dates are Gregorian.
+- **Move things:** drag the thing whose card is open to another date, or a span by either end. With the keyboard, Alt with Left or Right; with Shift as well, only a span's end.
+- **Groups:** give neighbouring tracks the same group (a continent, an alliance) and press its name to fold them away.
+- **Your own calendar:** load a nation profile that has one, or follow a "Use in a timeline" link from the calendar maker. Without one, dates are Gregorian. A second calendar can label the axis as well, when both are tied to Earth's.
+- **A friend's nation beside yours:** paste their link or pick their profile, and their tracks join your timeline, with their dates turned into your calendar where that can be done.
+- **A second opinion:** the reality check under the timeline says where the history differs from how long things have really taken.
 - **Save:** copy the link (it holds the whole timeline), or save the profile file when the history has outgrown a link.
-- **Take it with you:** SVG and PNG of what is on screen, a wiki table for a history section, CSV, or an iframe for a page on eurth.org.
+- **Take it with you:** SVG, PNG and WebP of what is on screen, print across up to twelve sheets (or save that as a PDF), a wiki table for a history section, CSV out and in, or an iframe for a page on eurth.org.
 
 ## How it fits with the other tools
 
@@ -40,7 +44,7 @@ npm run images    # the favicon, icons and sharing image, into public/
 
 Build before you test: several tests read `dist/`.
 
-- `src/tool/` is the timeline. The logic is plain TypeScript with no DOM: `engine.ts` (the one door to `@eurth/calendar`), `fuzzy.ts` (dates as people write them), `model.ts`, `normalize.ts` (whatever arrives from a link or a file is cleaned here), `ops.ts`, `axis.ts` and `layout.ts` (what goes where at a zoom), `describe.ts` (the timeline in words), `nav.ts` (the keyboard), `link.ts`, `profile.ts`, and the exports `svg.ts`, `wikitext.ts`, `csv.ts` and `embed.ts`. `Timeline.svelte` and `Chart.svelte` draw what those work out.
+- `src/tool/` is the timeline. The logic is plain TypeScript with no DOM: `engine.ts` (the one door to `@eurth/calendar`), `fuzzy.ts` (dates as people write them), `model.ts`, `normalize.ts` (whatever arrives from a link or a file is cleaned here), `ops.ts`, `axis.ts` and `layout.ts` (what goes where at a zoom), `describe.ts` (the timeline in words), `nav.ts` (the keyboard), `link.ts`, `profile.ts`, `convert.ts` (dates from one calendar in another), `shift.ts` (moving things in time), `review.ts` (the reality check), and the exports `svg.ts`, `print.ts`, `wikitext.ts`, `csv.ts` and `embed.ts`. `Timeline.svelte` and `Chart.svelte` draw what those work out.
 - `src/content/` is the guide, the glossary and the examples, as data, so that the tests can hold them to the house style.
 - `src/pages/` is the six pages.
 - No colour, font or spacing is written here: everything is a token of `@eurth/style`. `src/tool/theme.ts` says which token each tone is.
