@@ -35,7 +35,7 @@
   import Icon from '@eurth/style/components/Icon.svelte';
   import ShareButtons from '@eurth/style/components/ShareButtons.svelte';
   import tokens from '@eurth/style/tokens.json';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { EXAMPLES } from '../content/examples';
   import { clampView, defaultView, fitView, panView, resizeView, viewLabel, viewPrecision, xOf, zoomView, type View } from './axis';
   import Chart from './Chart.svelte';
@@ -83,9 +83,12 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
   /** The chart on a screen: rows tall enough to press, labels in the suite's 14-pixel type. */
   const SCREEN: Partial<LayoutOptions> = { eraHeight: 44, spanHeight: 44, eventHeight: 44, rowGap: 6, trackPad: 10, axisHeight: 40, marker: 16, labelGap: 8, barPad: 12 };
 
-  let story = $state.raw(startHistory<Timeline>(embed ? emptyTimeline() : START));
+  // What the page opens with, before the link has been read. A page is an embed or it isn't, for
+  // as long as it is open, so this is read once and never again.
+  const opening = untrack(() => (embed ? emptyTimeline() : START));
+  let story = $state.raw(startHistory<Timeline>(opening));
   let width = $state(1000);
-  let view = $state.raw<View>(wholeView(embed ? emptyTimeline() : START, 1000));
+  let view = $state.raw<View>(wholeView(opening, 1000));
   let measure = $state.raw<(text: string, bold: boolean) => number>((text, bold) => guessWidth(text, bold) * 1.1);
   let active = $state.raw<Ref | null>(null);
   let selected = $state.raw<Ref | null>(null);

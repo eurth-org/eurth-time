@@ -266,6 +266,8 @@
     {/each}
   </div>
 
+  <!-- The plot takes the keyboard even with nothing on it: plus, minus and Shift with the arrows still zoom and slide an empty timeline. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
     bind:this={plot}
     bind:clientWidth={width}
