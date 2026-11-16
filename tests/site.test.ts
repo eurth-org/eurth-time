@@ -58,7 +58,7 @@ describe.skipIf(!built)('the timeline page, before any script runs', () => {
     const index = page('');
     const embed = page('embed');
     expect(index).toContain('<h1');
-    for (const label of ['Add event', 'Add span', 'Add era', 'Add track', 'Undo', 'Redo', 'WebP', 'Import CSV', 'Add its tracks', 'From a profile', 'Copy wiki table', 'Copy embed code', 'Load profile', 'Save profile', 'Copy link', 'Copy description']) {
+    for (const label of ['Add event', 'Add span', 'Add era', 'Add track', 'Undo', 'Redo', 'WebP', 'Print', 'Import CSV', 'Add its tracks', 'From a profile', 'Copy wiki table', 'Copy embed code', 'Load profile', 'Save profile', 'Copy link', 'Copy description']) {
       expect(text(index), label).toContain(label);
       expect(text(embed), label).not.toContain(label);
     }

@@ -41,6 +41,8 @@ export interface SvgOptions {
   theme: SvgTheme;
   /** Whether to head the picture with the timeline's title and the stretch of time shown. Default true. */
   heading?: boolean;
+  /** A few words after the stretch of time in the heading: "sheet 2 of 4". */
+  note?: string;
   /** The width kept for the track names, and the space around everything. */
   gutter?: number;
   padding?: number;
@@ -99,7 +101,7 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
   if (heading) {
     out.push(
       text(padding, padding + 22, fitText(description.title, width - 2 * padding, (t) => Array.from(t).length * 12), `font-family="${escapeXml(theme.sans)}" font-size="20" font-weight="700" fill="${theme.ink}"`),
-      text(padding, padding + 44, viewLabel(engine, view), `${mono} fill="${theme.muted}"`),
+      text(padding, padding + 44, options.note ? `${viewLabel(engine, view)} · ${options.note}` : viewLabel(engine, view), `${mono} fill="${theme.muted}"`),
     );
   }
   out.push(

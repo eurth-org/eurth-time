@@ -22,6 +22,7 @@
     faMagnifyingGlassPlus,
     faPen,
     faPlus,
+    faPrint,
     faRotateLeft,
     faRotateRight,
     faTable,
@@ -50,6 +51,7 @@ import { timelineCsv, timelineFromCsv } from './csv';
   import { LIMITS, TRACK_KINDS, emptyTimeline, getItem, sameRef, titleOf, type Ref, type Timeline, type Track, type TrackKind } from './model';
   import { KEY_HELP, move, navOrder, revealView, type KeyAction } from './nav';
   import { cleanUrl } from './normalize';
+import { SHEET_CHOICES, printSheets } from './print';
   import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from './ops';
   import { readProfile, toProfileSection } from './profile';
   import { pictureName, timelineSvg } from './svg';
@@ -576,6 +578,33 @@ import { timelineCsv, timelineFromCsv } from './csv';
     bringIn(read.timeline, 'the sheet');
   }
 
+  // Print: what is on screen, spread across a number of sheets, one to a page. The browser's
+  // own print dialogue does the rest, saving as a PDF included.
+  let sheetCount = $state(2);
+
+  async function print() {
+    const light = svgTheme(resolveColors(tokens, 'light'), tokens.type.families);
+    const sheets = printSheets(timeline, engine, { first: view.start, last: view.end }, sheetCount, light);
+    const holder = document.createElement('div');
+    holder.className = 'time-sheets';
+    for (const sheet of sheets) {
+      const image = new Image(sheet.width, sheet.height);
+      image.alt = sheet.label;
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(sheet.svg)}`;
+      holder.append(image);
+    }
+    document.body.append(holder);
+    document.documentElement.classList.add('time-printing');
+    await Promise.all([...holder.querySelectorAll('img')].map((image) => image.decode().catch(() => undefined)));
+    const tidy = () => {
+      holder.remove();
+      document.documentElement.classList.remove('time-printing');
+      removeEventListener('afterprint', tidy);
+    };
+    addEventListener('afterprint', tidy);
+    window.print();
+  }
+
   async function copyWiki() {
     toast((await copyText(timelineWikitext(timeline, engine))) ? 'Wiki table copied. Paste it into your history section.' : "That didn't copy. Your browser may not allow it here.");
   }
@@ -834,6 +863,15 @@ import { timelineCsv, timelineFromCsv } from './csv';
           </select>
         </label>
         <button type="button" class="eu-btn" data-click="bounce" onclick={saveCsv}><Icon icon={faDownload} /> CSV</button>
+        <button type="button" class="eu-btn" onclick={print}><Icon icon={faPrint} /> Print</button>
+        <label class="size">
+          <span class="eu-visually-hidden">How many sheets to print across</span>
+          <select class="eu-select" bind:value={sheetCount}>
+            {#each SHEET_CHOICES as count (count)}
+              <option value={count}>{count === 1 ? 'On 1 sheet' : `Across ${count} sheets`}</option>
+            {/each}
+          </select>
+        </label>
         <button type="button" class="eu-btn" onclick={importCsv}><Icon icon={faFileImport} /> Import CSV</button>
         <button type="button" class="eu-btn" onclick={copyWiki}><Icon icon={faTable} /> Copy wiki table</button>
         <button type="button" class="eu-btn" onclick={copyEmbed}><Icon icon={faCode} /> Copy embed code</button>
@@ -1017,6 +1055,39 @@ import { timelineCsv, timelineFromCsv } from './csv';
   }
   .tone-5 {
     background: var(--ink);
+  }
+
+  /* Printing: the sheets and nothing else, one to a page, on paper turned on its side. */
+  :global(.time-sheets) {
+    display: none;
+  }
+
+  @media print {
+    :global(html.time-printing body > *:not(.time-sheets)) {
+      display: none !important;
+    }
+
+    :global(html.time-printing .time-sheets) {
+      display: block;
+    }
+
+    :global(html.time-printing .time-sheets img) {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 100vh;
+      object-fit: contain;
+      break-after: page;
+    }
+
+    :global(html.time-printing .time-sheets img:last-child) {
+      break-after: auto;
+    }
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
   }
 
   @media (max-width: 800px) {

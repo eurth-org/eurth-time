@@ -41,7 +41,6 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 - **A second calendar on the same axis,** so two nations can each read the timeline in their own reckoning.
 - **Group and collapse tracks** (a continent, an alliance).
 - **Drag an event or the end of a span** to change its date, with the keyboard doing the same.
-- **Print:** a timeline across several pages, as a PDF made in the browser.
 - **Pictures on cards** (a link to an image, shown in an `<img>`).
 - **A link preview picture per timeline** (a Worker would draw it).
 
@@ -49,6 +48,7 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 
 Still not live: the door is 17 December.
 
+- **Print.** What is on screen, on one sheet or spread across up to twelve, each a page of its own with the title, the dates it covers and its place in the run. Spread wider, labels the screen had no room for find room. It goes through the browser's own print dialogue, which is also how it becomes a PDF; paper is light, so the sheets are drawn in the light theme.
 - **Tracks from someone else's timeline.** Paste a link or pick a profile, and its tracks and eras join yours; theirs stays as it was. That is how a shared world's history is built without accounts. When the two timelines are in different calendars and both are tied to Earth, the newcomer's dates are turned into yours: a day stays the same day, a month or a year becomes the one its middle falls in, and a decade or century becomes "about" a year. When either calendar has no link to Earth, Time says so and adds nothing.
 - **Import from CSV.** The columns the export writes, in any order, or a sheet typed by hand with a title and a date in each row; dates are read from the compact code when it is there, otherwise from the words, in the timeline's calendar. Rows join the track of their name or start a new one, and nothing already there is added twice. What can't be dated is left out, and undo takes the whole import out again.
 - **WebP beside PNG** for the picture, in the same sizes. A browser that can't make a WebP hands back a PNG, and Time says so and names the file for what it is.

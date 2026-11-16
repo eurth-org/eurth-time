@@ -12,6 +12,7 @@ import { timelineFromLink } from '../src/tool/link';
 import { countItems, emptyTimeline, titleOf } from '../src/tool/model';
 import { normalizeTimeline } from '../src/tool/normalize';
 import { addedLine, mergeTimeline } from '../src/tool/ops';
+import { SHEET_AXIS, SHEET_CHOICES, printSheets, sheetViews } from '../src/tool/print';
 import { encodeDate } from '../src/tool/fuzzy';
 import { escapeXml, fileSlug, pictureName, timelineSvg } from '../src/tool/svg';
 import { timelineWikitext, wikiLink, wikiText } from '../src/tool/wikitext';
@@ -360,6 +361,50 @@ describe('one timeline brought into another', () => {
     expect(addedLine({ tracks: 0, spans: 1, events: 0, eras: 0 })).toBe('1 span');
     // The timeline being added to keeps its own title and calendar.
     expect(mergeTimeline(emptyTimeline(), coast).timeline).toEqual({ ...coast, title: '' });
+  });
+});
+
+describe('the timeline on paper', () => {
+  const range = { first: yearStart(gregorian, 1600), last: yearStart(gregorian, 2000) };
+
+  it('cuts the stretch into sheets that follow one another', () => {
+    for (const count of SHEET_CHOICES) {
+      const views = sheetViews(range, count);
+      expect(views.length).toBe(count);
+      expect(views[0]!.start).toBe(range.first);
+      expect(views.at(-1)!.end).toBeCloseTo(range.last, 6);
+      for (let i = 1; i < views.length; i++) expect(views[i]!.start).toBeCloseTo(views[i - 1]!.end, 9);
+      for (const view of views) expect(view.width).toBe(SHEET_AXIS);
+    }
+    expect(sheetViews(range, 0).length).toBe(1);
+    expect(sheetViews(range, 99).length).toBe(12);
+    expect(sheetViews(range, NaN).length).toBe(1);
+    expect(sheetViews({ first: 5, last: 5 }, 3).every((view) => view.end > view.start)).toBe(true);
+  });
+
+  it('draws each sheet as a picture of its own, with its place in the run', () => {
+    const sheets = printSheets(coast, gregorian, range, 4, TEST_THEME);
+    expect(sheets.map((sheet) => sheet.label)).toEqual([1, 2, 3, 4].map((n) => `History of the Oriental Coast, sheet ${n} of 4`));
+    expect(sheets[0]!.svg).toContain('>1600 – 1699 CE · sheet 1 of 4</text>');
+    sheets.forEach((sheet, i) => {
+      readXml(sheet.svg);
+      expect(sheet.width).toBe(SHEET_AXIS + 198);
+      // Sheets are equal in days, so a sheet may begin a day short of the century.
+      expect(sheet.svg).toMatch(new RegExp(`>1[5-9]\\d\\d – 1[6-9]\\d\\d CE · sheet ${i + 1} of 4</text>`));
+      expect(sheet.svg).not.toMatch(/undefined|NaN/);
+    });
+    // Spread wider, labels that had no room find some: the treaty is cut short on one sheet and whole on four.
+    expect(sheets[1]!.svg).toContain('>Treaty of Selunna</text>');
+    expect(sheets[3]!.svg).toContain('>First orbital flight</text>');
+    expect(sheets[0]!.svg).not.toContain('>First orbital flight</text>');
+  });
+
+  it('says nothing of sheets when there is only one', () => {
+    const [only] = printSheets(coast, gregorian, range, 1, TEST_THEME);
+    expect(only!.label).toBe('History of the Oriental Coast');
+    expect(only!.svg).toContain('>1600 – 1999 CE</text>');
+    expect(only!.svg).not.toContain('sheet');
+    expect(printSheets(emptyTimeline(), gregorian, range, 2, TEST_THEME).map((sheet) => sheet.label)).toEqual(['Timeline, sheet 1 of 2', 'Timeline, sheet 2 of 2']);
   });
 });
 
