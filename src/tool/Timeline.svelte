@@ -46,13 +46,13 @@ import { timelineCsv, timelineFromCsv } from './csv';
   import { GREGORIAN_CALENDAR, engineFor, type CalendarData } from './engine';
   import { dateOfDay, dateRange, formatDate, isBeforeBigBang, parseDate, type FuzzyDate } from './fuzzy';
   import { canRedo, canUndo, record, redo, startHistory, undo } from './history';
-  import { extentOf, groupNames, guessWidth, hiddenTracks, type LayoutOptions } from './layout';
+  import { extentOf, groupNames, guessWidth, hiddenTracks, presentDay, type LayoutOptions } from './layout';
   import { encodeTimeline, linkFits, timelineFromLink, timelineLink } from './link';
   import { LIMITS, TRACK_KINDS, emptyTimeline, getItem, sameRef, titleOf, type Ref, type Timeline, type Track, type TrackKind } from './model';
   import { KEY_HELP, move, navOrder, revealView, type KeyAction } from './nav';
   import { cleanUrl } from './normalize';
 import { SHEET_CHOICES, printSheets } from './print';
-  import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setAlso, setCalendar, setTitle, updateItem, updateTrack } from './ops';
+  import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setAlso, setCalendar, setPresent, setTitle, updateItem, updateTrack } from './ops';
   import { readProfile, toProfileSection } from './profile';
 import { reviewTimeline } from './review';
 import { moveInTime, shiftDate, stepDate, type Part } from './shift';
@@ -510,6 +510,27 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
     return 'date' in item ? formatDate(also, turn(item.date)) : formatStretch(also, turn(item.from), item.to === null ? null : turn(item.to));
   });
 
+  // The world's today: where things still going on are drawn to. Unset, it is the latest date here.
+  const latest = $derived.by(() => {
+    const day = presentDay({ ...timeline, present: null }, engine);
+    return day === null ? '' : formatDate(engine, dateOfDay(engine, day, 'year'));
+  });
+
+  function changePresent(event: Event & { currentTarget: HTMLInputElement }) {
+    const text = event.currentTarget.value.trim();
+    if (text === '') {
+      commit(setPresent(timeline, null));
+      return;
+    }
+    const date = parseDate(engine, text);
+    if (date === null) {
+      toast(dateHelp());
+      event.currentTarget.value = timeline.present === null ? '' : formatDate(engine, timeline.present);
+      return;
+    }
+    commit(setPresent(timeline, date));
+  }
+
   const profileCalendarDiffers = $derived(offered.calendar !== null && JSON.stringify(offered.calendar) !== JSON.stringify(timeline.calendar));
 
   function addReigns() {
@@ -894,6 +915,20 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
       {/if}
       <p>{empty ? 'Empty so far.' : `${countLine(timeline)}.`} Dated in {calendarName(engine)}.</p>
       {#if !embed}
+        {#key timeline.present === null ? '' : formatDate(engine, timeline.present)}
+          <label class="eu-field">
+            <span class="eu-label">The present</span>
+            <input
+              class="eu-input eu-input--data"
+              value={timeline.present === null ? '' : formatDate(engine, timeline.present)}
+              placeholder={latest === '' ? 'The latest date here' : `${latest}, the latest date here`}
+              autocomplete="off"
+              aria-describedby="time-present-help"
+              onchange={changePresent}
+            />
+            <span class="eu-help" id="time-present-help">Things still going on are drawn as far as this date. Leave it empty to use the latest date on the timeline.</span>
+          </label>
+        {/key}
         <div class="eu-row">
           {#if timeline.calendar !== null}
             <button type="button" class="eu-btn" onclick={() => useCalendar(null)}>Use the Gregorian calendar</button>

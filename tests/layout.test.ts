@@ -3,9 +3,10 @@ import { EXAMPLES, exampleById } from '../src/content/examples';
 import { allTime, clampView, fitView, MIN_VISIBLE_DAYS, xOf, zoomView, type View } from '../src/tool/axis';
 import { yearEnd, yearStart } from '../src/tool/dates';
 import { engineFor } from '../src/tool/engine';
-import { LAYOUT_DEFAULTS, extentOf, fitText, groupNames, guessWidth, hiddenTracks, layoutTimeline, packRows } from '../src/tool/layout';
+import { LAYOUT_DEFAULTS, extentOf, fitText, groupNames, guessWidth, hiddenTracks, layoutTimeline, packRows, presentDay } from '../src/tool/layout';
 import { navOrder } from '../src/tool/nav';
-import { updateTrack } from '../src/tool/ops';
+import { setPresent, updateTrack } from '../src/tool/ops';
+import { dateRange, encodeDate } from '../src/tool/fuzzy';
 import { timelineFromLink, timelineLink } from '../src/tool/link';
 import { timelineCsv, timelineFromCsv } from '../src/tool/csv';
 import { describeTimeline, descriptionText } from '../src/tool/describe';
@@ -57,8 +58,9 @@ describe('the Oriental Coast, laid out', () => {
   it('puts eras on top, tracks below one another, and the axis last', () => {
     expect(layout.width).toBe(1000);
     expect(layout.eras.map((era) => [era.text, era.y, era.h])).toEqual([['Age of Sail', 0, 32], ['Industrial age', 0, 32], ['Modern era', 0, 32]]);
-    expect(layout.eras[2]!.openEnd).toBe(true);
-    expect(layout.eras[2]!.x + layout.eras[2]!.w).toBe(1000);
+    // The Modern era is still going on: it runs to the timeline's present, the latest date on it, and stops.
+    expect(layout.eras[2]!.openEnd).toBe(false);
+    expect(layout.eras[2]!.x + layout.eras[2]!.w).toBeCloseTo(xOf(fitted(), presentDay(coast, gregorian)! + 1), 6);
     let y = o.eraHeight;
     for (const track of layout.tracks) {
       expect(track.y).toBe(y);
@@ -85,7 +87,7 @@ describe('the Oriental Coast, laid out', () => {
     expect(war.w).toBeLessThan(20);
     expect(layout.tracks[0]!.spans.map((span) => [span.label, span.row, span.ongoing, span.openEnd])).toEqual([
       ['House Delmaris', 0, false, false],
-      ['Republic of Teland', 0, true, true],
+      ['Republic of Teland', 0, true, false],
     ]);
   });
 
@@ -225,9 +227,9 @@ describe('groups of tracks', () => {
     expect(laid.tracks.slice(0, 2).map((track) => [track.hidden, track.height, track.spans.length, track.events.length])).toEqual([[true, 0, 0, 0], [true, 0, 0, 0]]);
     expect(laid.tracks[2]!.y).toBe(o.eraHeight + o.groupHeight);
     expect(laid.height).toBe(open.height - open.tracks[0]!.height - open.tracks[1]!.height);
-    // The bar runs from the earliest thing in the group (1622) to the edge of the view: the republic is still going on.
+    // The bar runs from the earliest thing in the group (1622) to the present: the republic is still going on.
     expect(laid.groups[0]!.x).toBeCloseTo(xOf(view, yearStart(gregorian, 1622)), 6);
-    expect(laid.groups[0]!.x! + laid.groups[0]!.w).toBe(1000);
+    expect(laid.groups[0]!.x! + laid.groups[0]!.w).toBeCloseTo(xOf(view, presentDay(grouped, gregorian)! + 1), 6);
     expect([...hiddenTracks(grouped, ['Oriental powers'])]).toEqual([0, 1]);
     expect([...hiddenTracks(grouped, ['Somewhere else'])]).toEqual([]);
     expect(layoutTimeline(grouped, gregorian, view, { collapsed: ['Somewhere else'] })).toEqual(open);
@@ -270,5 +272,75 @@ describe('groups of tracks', () => {
     expect(shut).not.toContain('>House Delmaris</text>');
     expect(shut).not.toContain('>Teland</text>');
     expect(shut).toContain('>Coastal League</text>');
+  });
+});
+
+describe('things that are still going on', () => {
+  const flight = dateRange(gregorian, { year: 1961, month: 4, day: 12 }).first;
+  const republic = (timeline: typeof coast, view: View) => layoutTimeline(timeline, gregorian, view).tracks[0]!.spans.find((span) => span.label === 'Republic of Teland');
+
+  it('run to the timeline’s present: the latest date on it', () => {
+    expect(coast.present).toBeNull();
+    expect(presentDay(coast, gregorian)).toBe(flight);
+    expect(presentDay(emptyTimeline(), gregorian)).toBeNull();
+    const span = republic(coast, fitted())!;
+    expect(span.ongoing).toBe(true);
+    expect(span.x).toBeCloseTo(xOf(fitted(), yearStart(gregorian, 1871)), 6);
+    expect(span.x + span.w).toBeCloseTo(xOf(fitted(), flight + 1), 6);
+  });
+
+  it('do not last for ever, however far out the view goes', () => {
+    // A million years on screen: the republic is ninety of them, a sliver, not half the axis.
+    const far: View = { start: yearStart(gregorian, -500_000), end: yearStart(gregorian, 500_000), width: 1000 };
+    const laid = layoutTimeline(coast, gregorian, far);
+    for (const item of [...laid.eras, ...laid.tracks.flatMap((track) => track.spans)]) {
+      expect(item.w, item.label).toBeLessThanOrEqual(2);
+      expect(item.openEnd, item.label).toBe(false);
+    }
+    // And past the present there is nothing at all.
+    const after: View = { start: yearStart(gregorian, 1990), end: yearStart(gregorian, 2990), width: 1000 };
+    const later = layoutTimeline(coast, gregorian, after);
+    expect(later.eras).toEqual([]);
+    expect(later.tracks.flatMap((track) => track.spans)).toEqual([]);
+    expect(navOrder(coast, gregorian).every((item) => Number.isFinite(item.last) && item.last <= flight)).toBe(true);
+  });
+
+  it('run to the present the timeline is given, when it is given one', () => {
+    const set = setPresent(coast, { year: 2030 });
+    expect(encodeDate(set.present!)).toBe('2030');
+    expect(presentDay(set, gregorian)).toBe(yearEnd(gregorian, 2030));
+    // The timeline now reaches as far as its present, and so does a view that shows all of it.
+    expect(extentOf(set, gregorian)!.last).toBe(yearEnd(gregorian, 2030));
+    const view = fitView(gregorian, extentOf(set, gregorian)!, 1000);
+    const span = republic(set, view)!;
+    expect(span.x + span.w).toBeCloseTo(xOf(view, yearEnd(gregorian, 2030) + 1), 6);
+    expect(layoutTimeline(set, gregorian, view).eras[2]!.w).toBeGreaterThan(layoutTimeline(coast, gregorian, view).eras[2]!.w);
+    // A present earlier than a thing's start does not turn the thing inside out.
+    const early = setPresent(coast, { year: 1700 });
+    const short = republic(early, fitted())!;
+    expect(short.w).toBeGreaterThanOrEqual(2);
+    expect(short.x).toBeCloseTo(xOf(fitted(), yearStart(gregorian, 1871)), 6);
+    expect(navOrder(early, gregorian).every((item) => item.last >= item.first)).toBe(true);
+  });
+
+  it('keep their present in the link, and lose it when asked', () => {
+    const set = setPresent(coast, { year: 2030 });
+    expect(timelineFromLink(timelineLink('https://time.eurth.org/', set, true))).toEqual({ timeline: set, issues: [] });
+    expect(setPresent(set, null)).toEqual(coast);
+    // A present that can't be read changes nothing.
+    expect(setPresent(coast, { year: 1.5 } as never)).toBe(coast);
+    const odd = normalizeTimeline({ ...coast, present: 'one day' });
+    expect(odd.timeline.present).toBeNull();
+    expect(odd.issues.map((issue) => issue.path)).toEqual(['present']);
+    // It is made to fit the calendar like any other date.
+    expect(encodeDate(normalizeTimeline({ ...coast, present: '2023-2-31' }).timeline.present!)).toBe('2023-2-28');
+  });
+
+  it('are drawn that way in the picture too', () => {
+    const far: View = { start: yearStart(gregorian, -50_000), end: yearStart(gregorian, 50_000), width: 1000 };
+    const { svg } = timelineSvg(coast, gregorian, far, { theme: TEST_THEME });
+    readXml(svg);
+    // No bar wider than a few pixels at this distance.
+    for (const found of svg.matchAll(/<rect x="[\d.]+" y="[\d.]+" width="([\d.]+)" height="36"/g)) expect(Number(found[1])).toBeLessThanOrEqual(4);
   });
 });

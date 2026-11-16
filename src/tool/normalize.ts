@@ -121,6 +121,11 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
   const calendar = readCalendar(source.calendar, issues);
   const also = readAlso(source.also, calendar, issues);
   const engine = engineFor(calendar);
+  let present: FuzzyDate | null = null;
+  if (source.present !== null && source.present !== undefined) {
+    present = readDate(engine, source.present, 'present', issues);
+    if (present === null) issues.push({ path: 'present', message: "The timeline's present could not be read, so the latest date on it is used." });
+  }
 
   const eras: Era[] = [];
   const eraList = Array.isArray(source.eras) ? source.eras : [];
@@ -199,5 +204,5 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
     });
   }
 
-  return { timeline: { v: TIMELINE_VERSION, title: cleanText(source.title, LIMITS.title), calendar, also, eras, tracks }, issues };
+  return { timeline: { v: TIMELINE_VERSION, title: cleanText(source.title, LIMITS.title), calendar, also, present, eras, tracks }, issues };
 }

@@ -9,6 +9,7 @@
 import { scaleOf, xOf, type Extent, type View } from './axis';
 import type { DateEngine } from './engine';
 import { dateRange } from './fuzzy';
+import { presentDay } from './layout';
 import { sameRef, type Ref, type Timeline } from './model';
 
 export interface NavItem {
@@ -26,9 +27,11 @@ export interface NavItem {
  */
 export function navOrder(timeline: Timeline, engine: DateEngine, hidden: ReadonlySet<number> = new Set()): NavItem[] {
   const items: NavItem[] = [];
+  const present = presentDay(timeline, engine) ?? 0;
   const stretch = (ref: Ref, row: number, from: Parameters<typeof dateRange>[1], to: Parameters<typeof dateRange>[1] | null) => {
     const first = dateRange(engine, from).first;
-    items.push({ ref, row, first, last: to === null ? Infinity : Math.max(first, dateRange(engine, to).last) });
+    // Something still going on runs to the timeline's present.
+    items.push({ ref, row, first, last: Math.max(first, to === null ? present : dateRange(engine, to).last) });
   };
   timeline.eras.forEach((era, index) => stretch({ kind: 'era', index }, -1, era.from, era.to));
   timeline.tracks.forEach((track, t) => {

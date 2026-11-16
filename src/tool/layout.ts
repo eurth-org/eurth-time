@@ -151,14 +151,28 @@ export interface Layout {
   axisY: number;
 }
 
-/** The first and last day a stretch covers. An open end runs on for ever. */
-function stretch(engine: DateEngine, from: FuzzyDate, to: FuzzyDate | null): Extent {
-  return { first: dateRange(engine, from).first, last: to === null ? Infinity : dateRange(engine, to).last };
+/**
+ * The first and last day a stretch covers. Something still going on runs to the timeline's
+ * present and no further: it is going on now, which is not the same as for ever.
+ */
+function stretch(engine: DateEngine, from: FuzzyDate, to: FuzzyDate | null, present: number): Extent {
+  const start = dateRange(engine, from);
+  return { first: start.first, last: to === null ? Math.max(present, start.last) : dateRange(engine, to).last };
+}
+
+/**
+ * The last day of the timeline's present: the day that things still going on are drawn to. It
+ * is the present the timeline was given, or else the latest date anywhere on it. Null for a
+ * timeline with nothing on it.
+ */
+export function presentDay(timeline: Timeline, engine: DateEngine): number | null {
+  if (timeline.present !== null) return dateRange(engine, timeline.present).last;
+  return extentOf(timeline, engine)?.last ?? null;
 }
 
 /**
  * The stretch of time a timeline covers, from its earliest date to its latest, or null when it
- * holds nothing. Open ends count from where they start.
+ * holds nothing. Its present counts when it has been given one; open ends count from where they start.
  */
 export function extentOf(timeline: Timeline, engine: DateEngine): Extent | null {
   let first = Infinity;
@@ -180,6 +194,7 @@ export function extentOf(timeline: Timeline, engine: DateEngine): Extent | null 
     }
     for (const event of track.events) take(event.date);
   }
+  if (first !== Infinity) take(timeline.present);
   return first === Infinity ? null : { first, last };
 }
 
@@ -232,7 +247,7 @@ export function layoutTimeline(timeline: Timeline, engine: DateEngine, view: Vie
   /** A stretch of days as pixels, clipped to the view. Null when none of it shows. */
   const box = (extent: Extent) => {
     const left = xOf(view, extent.first);
-    const right = extent.last === Infinity ? Infinity : xOf(view, extent.last + 1);
+    const right = xOf(view, extent.last + 1);
     if (right <= 0 || left >= width) return null;
     const x = Math.max(0, left);
     return { x, w: Math.max(2, Math.min(width, right) - x), openStart: left < 0, openEnd: right > width, left, right };
@@ -246,7 +261,8 @@ export function layoutTimeline(timeline: Timeline, engine: DateEngine, view: Vie
   };
 
   let y = 0;
-  const eraStretches = timeline.eras.map((era) => stretch(engine, era.from, era.to));
+  const present = presentDay(timeline, engine) ?? 0;
+  const eraStretches = timeline.eras.map((era) => stretch(engine, era.from, era.to, present));
   const eraRows = packRows(eraStretches);
   const eras: LaidEra[] = [];
   timeline.eras.forEach((era, index) => {
@@ -280,7 +296,7 @@ export function layoutTimeline(timeline: Timeline, engine: DateEngine, view: Vie
         const one = timeline.tracks[member]!;
         items += one.spans.length + one.events.length;
         for (const span of one.spans) {
-          const covered = stretch(engine, span.from, span.to);
+          const covered = stretch(engine, span.from, span.to, present);
           first = Math.min(first, covered.first);
           last = Math.max(last, covered.last);
         }
@@ -298,7 +314,7 @@ export function layoutTimeline(timeline: Timeline, engine: DateEngine, view: Vie
       return { index, name: track.name, kind: track.kind, group: track.group, hidden: true, y, height: 0, spans: [], events: [] };
     }
     const top = y;
-    const stretches = track.spans.map((span) => stretch(engine, span.from, span.to));
+    const stretches = track.spans.map((span) => stretch(engine, span.from, span.to, present));
     const rows = packRows(stretches);
     const spanRows = rows.length === 0 ? 0 : Math.max(...rows) + 1;
     const spansTop = top + o.trackPad;

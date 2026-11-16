@@ -99,6 +99,12 @@ export interface Timeline {
    * nations can each read it in their own reckoning. Null for none. Both must be tied to Earth.
    */
   also: CalendarData;
+  /**
+   * The world's today: the date that things still going on are drawn to. Null for the latest
+   * date on the timeline, which is right for most histories; set it when the present is later
+   * than the last thing that happened.
+   */
+  present: FuzzyDate | null;
   eras: Era[];
   tracks: Track[];
 }
@@ -107,7 +113,7 @@ export interface Timeline {
 export type Ref = { kind: 'era'; index: number } | { kind: 'span' | 'event'; track: number; index: number };
 
 /** A timeline with nothing in it. */
-export const emptyTimeline = (): Timeline => ({ v: TIMELINE_VERSION, title: '', calendar: null, also: null, eras: [], tracks: [] });
+export const emptyTimeline = (): Timeline => ({ v: TIMELINE_VERSION, title: '', calendar: null, also: null, present: null, eras: [], tracks: [] });
 
 /** How many spans and events a timeline holds. */
 export function countItems(timeline: Timeline): { tracks: number; spans: number; events: number; eras: number } {

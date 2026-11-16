@@ -108,6 +108,15 @@ describe.skipIf(!built)('the other pages', () => {
     expect(html).toContain('lang="fr"');
   });
 
+  it('keep the space between a word and the link after it', () => {
+    // A link at the start of a line in the source loses the space before it when the page is built, unless the source says to keep it.
+    for (const path of ['', 'examples', 'guide', 'glossary', 'embed']) {
+      const prose = page(path).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, '');
+      expect(prose.match(/[a-z,;:.]<a href="\/[a-z]*\/?(?:#[a-z-]*)?"/g) ?? [], path).toEqual([]);
+      expect(prose.match(/<\/a>[a-z]/g) ?? [], path).toEqual([]);
+    }
+  });
+
   it('are the six pages and nothing more', () => {
     const pages: string[] = [];
     const walk = (dir: string, under = '') => {

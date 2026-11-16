@@ -41,6 +41,15 @@ export function setAlso(timeline: Timeline, also: CalendarData): Timeline {
   return clean({ ...timeline, also });
 }
 
+/**
+ * Sets the world's today, the date things still going on are drawn to; with null, back to the
+ * latest date on the timeline. A date that can't be read changes nothing.
+ */
+export function setPresent(timeline: Timeline, present: FuzzyDate | null): Timeline {
+  const next = clean({ ...timeline, present });
+  return present !== null && next.present === null ? timeline : next;
+}
+
 /** Adds a track at the end. */
 export function addTrack(timeline: Timeline, name = '', kind: TrackKind = 'nation'): Timeline {
   if (timeline.tracks.length >= LIMITS.tracks) return timeline;

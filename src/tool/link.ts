@@ -51,6 +51,7 @@ function trim(list: Packed): Packed {
 /**
  * The packed form:
  *   n  the title
+ *   p  the present, when it is set
  *   e  eras: [label, from, to]
  *   k  tracks: [name, kind as 0 to 3, spans, events, group]
  *        span:  [label, from, to, tone, text, links]
@@ -62,6 +63,7 @@ function trim(list: Packed): Packed {
 function pack(timeline: Timeline): Record<string, unknown> {
   const packed: Record<string, unknown> = {};
   if (timeline.title !== '') packed.n = timeline.title;
+  if (timeline.present !== null) packed.p = encodeDate(timeline.present);
   if (timeline.eras.length > 0) packed.e = timeline.eras.map((era) => trim([era.label, date(era.from), date(era.to)]));
   if (timeline.tracks.length > 0) {
     packed.k = timeline.tracks.map((track) =>
@@ -87,6 +89,7 @@ function unpack(packed: Record<string, unknown>, calendar: CalendarData, also: C
     title: packed.n,
     calendar,
     also,
+    present: packed.p,
     eras: rows(packed.e).map(([label, from, to]) => ({ label, from, to: to === '' ? null : to })),
     tracks: rows(packed.k).map(([name, kind, spans, events, group]) => ({
       name,
@@ -126,7 +129,7 @@ export function timelineLink(base: string, timeline: Timeline, always = false): 
   const url = new URL(base);
   url.search = '';
   url.hash = '';
-  const empty = timeline.title === '' && timeline.eras.length === 0 && timeline.tracks.length === 0;
+  const empty = timeline.title === '' && timeline.present === null && timeline.eras.length === 0 && timeline.tracks.length === 0;
   if (!empty || always) url.searchParams.set(TIMELINE_PARAM, encodeTimeline(timeline));
   if (timeline.calendar !== null) url.searchParams.set(CALENDAR_PARAM, encodeCalendar(timeline.calendar));
   if (timeline.also !== null) url.searchParams.set(ALSO_PARAM, encodeCalendar(timeline.also));
