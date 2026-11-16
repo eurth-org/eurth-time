@@ -130,14 +130,15 @@ export function timelineLink(base: string, timeline: Timeline, always = false): 
 export const linkFits = (link: string): boolean => link.length <= MAX_LINK_LENGTH;
 
 /**
- * The timeline a link carries. Takes a whole address or just its query string. A link with a
+ * The timeline a link carries. Takes a whole address, one without its site, or just its query string. A link with a
  * calendar and no timeline (as the calendar maker's "Use in a timeline" makes) gives an empty
  * timeline in that calendar. Null when the link carries neither.
  */
 export function timelineFromLink(link: string): { timeline: Timeline; issues: Issue[] } | null {
   let search: string;
   try {
-    search = link.includes('://') ? new URL(link).search : link;
+    // A whole address, an address without its site ("/?t=…"), or the query string alone.
+    search = link.includes('://') ? new URL(link).search : link.slice(link.indexOf('?') + 1);
   } catch {
     return null;
   }

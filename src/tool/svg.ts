@@ -166,7 +166,9 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
         // The stretch the date covers: "1846" is a year wide, "the 1830s" ten.
         const from = Math.max(event.from, -o.marker);
         const to = Math.min(event.to, view.width + o.marker);
-        out.push(`<path d="M${n(from)} ${n(y - 4)}V${n(y + 4)}M${n(from)} ${n(y)}H${n(to)}M${n(to)} ${n(y - 4)}V${n(y + 4)}" fill="none" stroke="${theme.muted}" stroke-width="2"/>`);
+        // A bracket under the marker, so that it never runs through the label.
+        const under = y + o.marker / 2 + 2;
+        out.push(`<path d="M${n(from)} ${n(under)}V${n(under + 5)}H${n(to)}V${n(under)}" fill="none" stroke="${theme.muted}" stroke-width="2"/>`);
       }
       const shape = `x="${n(event.x - half)}" y="${n(y - half)}" width="${n(2 * half)}" height="${n(2 * half)}" transform="rotate(45 ${n(event.x)} ${n(y)})"`;
       // An uncertain date is a hollow marker, a certain one a filled one.

@@ -101,7 +101,9 @@
 
   // The link. The plain address is the starting example; anything else, an emptied timeline
   // included, carries itself.
-  const base = $derived(`${siteUrl}/`);
+  // Before the page has loaded there is no address to read: the site's own, then. After, the
+  // address the page is really at, which is the same thing once the site is live.
+  const base = $derived(ready ? `${location.origin}/` : `${siteUrl}/`);
   const isStart = $derived(timeline.calendar === null && encodeTimeline(timeline) === START_PACKED);
   const link = $derived(isStart ? base : timelineLink(base, timeline, true));
   const fits = $derived(linkFits(link));
@@ -156,14 +158,25 @@
   });
 
   let frame = 0;
+  /** Where a glide in progress is heading. A second press of + zooms from there, not from half-way. */
+  let goal: View | null = null;
+  const heading = (): View => goal ?? view;
+
+  function settle() {
+    cancelAnimationFrame(frame);
+    goal = null;
+  }
+
   /** Moves the view there in a fifth of a second, or at once when motion is switched off. */
   function glide(to: View) {
     cancelAnimationFrame(frame);
     const target = clampView(engine, to);
     if (calm()) {
+      goal = null;
       view = target;
       return;
     }
+    goal = target;
     const from = view;
     const began = performance.now();
     const step = (now: number) => {
@@ -171,6 +184,7 @@
       const eased = 1 - (1 - t) ** 3;
       view = { start: from.start + (target.start - from.start) * eased, end: from.end + (target.end - from.end) * eased, width: target.width };
       if (t < 1) frame = requestAnimationFrame(step);
+      else goal = null;
     };
     frame = requestAnimationFrame(step);
   }
@@ -183,6 +197,7 @@
   function replace(next: Timeline) {
     commit(next);
     clear();
+    settle();
     view = wholeView(next, width);
   }
 
@@ -200,8 +215,9 @@
   function reveal(ref: Ref) {
     const item = stretchOf(ref);
     if (!item) return;
-    const next = revealView(view, { first: item.first, last: item.last });
-    if (next !== view) glide(next);
+    const from = heading();
+    const next = revealView(from, { first: item.first, last: item.last });
+    if (next !== from) glide(next);
   }
 
   function pick(ref: Ref) {
@@ -219,8 +235,9 @@
   function zoom(factor: number) {
     // About the thing the keyboard is on when it is in view; otherwise about the middle.
     const item = active === null ? undefined : stretchOf(active);
-    const at = item === undefined ? -1 : xOf(view, item.first);
-    glide(zoomView(engine, view, factor, at >= 0 && at <= view.width ? at : view.width / 2));
+    const from = heading();
+    const at = item === undefined ? -1 : xOf(from, item.first);
+    glide(zoomView(engine, from, factor, at >= 0 && at <= from.width ? at : from.width / 2));
   }
 
   function key(action: KeyAction) {
@@ -231,7 +248,7 @@
         reveal(next);
       }
     } else if (action.type === 'zoom') zoom(action.factor);
-    else if (action.type === 'pan') glide(panView(engine, view, action.fraction * view.width));
+    else if (action.type === 'pan') glide(panView(engine, heading(), action.fraction * view.width));
     else if (action.type === 'fit') glide(wholeView(timeline, width));
     else if (action.type === 'open') {
       if (active !== null) pick(active);
@@ -516,7 +533,7 @@
   {/if}
 
   <div class="eu-card sheet">
-    <Chart {timeline} {engine} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ontrack={(index) => { clear(); selectedTrack = index; }} />
+    <Chart {timeline} {engine} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ongrab={settle} ontrack={(index) => { clear(); selectedTrack = index; }} />
     {#if empty}
       <p class="eu-muted">{embed ? 'There is no timeline in this link.' : 'Nothing here yet. Add a track for a nation, then give it an event or a span.'}</p>
     {/if}
@@ -839,10 +856,24 @@
   }
 
   .words li {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
     align-items: baseline;
     gap: var(--space-1) var(--space-3);
+  }
+
+  .words li .eu-btn {
+    justify-self: start;
+    max-width: 100%;
+    text-align: left;
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--size-target);
+    font: var(--type-label);
+    cursor: pointer;
   }
 
   .keys {
@@ -882,7 +913,8 @@
 
   @media (max-width: 800px) {
     .below,
-    .pair {
+    .pair,
+    .words li {
       grid-template-columns: minmax(0, 1fr);
     }
   }

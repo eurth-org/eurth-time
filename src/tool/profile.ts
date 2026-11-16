@@ -25,8 +25,8 @@ import { cleanText, normalizeTimeline, type Issue } from './normalize';
 /** What the profile's schema allows in the plain fields. */
 const SCHEMA = { year: 1_000_000, events: 200, title: 80, eventTitle: 200, summary: 600, link: 4000, reigns: 200 };
 
-/** The "timeline" section as Time writes it. */
-export interface TimelineSection {
+/** The "timeline" section as Time writes it. A type, not an interface, so that it fits the profile's open sections. */
+export type TimelineSection = {
   /** The timeline's share link on time.eurth.org, when it is short enough to have one. */
   link?: string;
   /** One sentence about the timeline. */
@@ -41,7 +41,7 @@ export interface TimelineSection {
   events: { year: number; title: string }[];
   /** The whole timeline. */
   definition: Timeline;
-}
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

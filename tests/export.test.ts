@@ -87,7 +87,7 @@ describe('the picture', () => {
     expect(svg.match(/<path d="M[\d.]+ [\d.]+L[\d.]+ [\d.]+L[\d.]+ [\d.]+" fill="none"/g)!.length).toBe(2);
     expect(svg.match(new RegExp(`fill="${TEST_THEME.panel}" stroke="${TEST_THEME.marker}"`, 'g'))!.length).toBe(4);
     expect(svg.match(new RegExp(`<rect [^>]*transform="rotate[^>]* fill="${TEST_THEME.marker}"/>`, 'g'))!.length).toBe(9);
-    expect(svg.match(/<path d="M[-\d.]+ [\d.]+V[\d.]+M/g)!.length).toBeGreaterThanOrEqual(2);
+    expect(svg.match(/<path d="M[-\d.]+ [\d.]+V[\d.]+H[-\d.]+V[\d.]+" fill="none"/g)!.length).toBeGreaterThanOrEqual(2);
   });
 
   it('can leave the heading out, and follows the view', () => {

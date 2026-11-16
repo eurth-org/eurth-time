@@ -32,6 +32,7 @@
     onpick,
     onkey,
     ontrack,
+    ongrab,
   }: {
     timeline: Timeline;
     engine: DateEngine;
@@ -49,18 +50,51 @@
     onpick: (ref: Ref) => void;
     onkey: (action: KeyAction) => void;
     ontrack?: (index: number) => void;
+    /** Called when a hand takes hold of the view: a glide in progress should stop. */
+    ongrab?: () => void;
   } = $props();
 
   let plot: HTMLDivElement | undefined = $state();
 
   const layout = $derived(layoutTimeline(timeline, engine, view, options));
-  const tickList = $derived(ticks(engine, view));
+  // On a narrow plot labels may stand a little closer together, so that a phone has an axis too.
+  const tickOptions = $derived.by(() => {
+    const yearFrom = Math.max(34, Math.min(56, view.width / 8));
+    const partFrom = Math.max(26, Math.min(34, view.width / 12));
+    return { yearFrom, yearFull: yearFrom * 1.85, partFrom, partFull: partFrom * 1.75 };
+  });
+  const tickList = $derived(ticks(engine, view, tickOptions));
   const marker = $derived(options.marker ?? 16);
   const barPad = $derived(options.barPad ?? 12);
   const labelGap = $derived(options.labelGap ?? 8);
   const top = $derived(layout.tracks[0]?.y ?? layout.axisY);
   // A list to choose from needs something in it; an empty timeline is only a place to drag and zoom.
   const hasItems = $derived(timeline.eras.length > 0 || timeline.tracks.some((track) => track.spans.length > 0 || track.events.length > 0));
+
+  /**
+   * Where each tick's label goes. A label is centred under its tick, nudged inwards when the
+   * edge of the plot would cut it off. Labels are placed strongest first (a century before a
+   * decade), and one that would run into a label already placed is left out: so they never
+   * overlap, however long an era's name is or however narrow the screen.
+   */
+  const labels = $derived.by(() => {
+    // Dates are set in the suite's monospace type, which is a little wider than the words the layout measures.
+    const half = (label: string) => ((options.measure?.(label, false) ?? label.length * 8) * 1.25) / 2 + 2;
+    const placed: { from: number; to: number }[] = [];
+    const out = new Map<number, number>();
+    const wanted = tickList.filter(labelShown).sort((a, b) => b.opacity - a.opacity || a.days - b.days);
+    for (const tick of wanted) {
+      const size = half(tick.label);
+      if (size * 2 > view.width) continue;
+      const x = Math.min(Math.max(tick.x, size), view.width - size);
+      // A label nudged far from its tick would point at the wrong place.
+      if (Math.abs(x - tick.x) > size) continue;
+      if (placed.some((box) => x - size < box.to + 6 && x + size > box.from - 6)) continue;
+      placed.push({ from: x - size, to: x + size });
+      out.set(tick.days, x);
+    }
+    return out;
+  });
 
   const idOf = (ref: Ref): string => (ref.kind === 'era' ? `time-era-${ref.index}` : `time-${ref.kind}-${ref.track}-${ref.index}`);
   const nameOf = (ref: Ref): string => {
@@ -76,6 +110,7 @@
 
   function down(event: PointerEvent) {
     if (event.button !== 0) return;
+    ongrab?.();
     pointers.set(event.pointerId, event.clientX);
     if (pointers.size === 1) drag = { x: event.clientX, view, moved: false };
     else if (pointers.size === 2 && plot) {
@@ -133,9 +168,11 @@
     const wheel = (event: WheelEvent) => {
       if (event.ctrlKey || event.metaKey) {
         event.preventDefault();
+        ongrab?.();
         view = zoomView(engine, view, Math.exp(-event.deltaY * 0.01), event.clientX - element.getBoundingClientRect().left);
       } else if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
         event.preventDefault();
+        ongrab?.();
         view = panView(engine, view, event.deltaX);
       }
     };
@@ -188,7 +225,7 @@
       <div class="row-line strong" style:top="{layout.axisY}px"></div>
       {#each tickList as tick (tick.days)}
         <div class="tick" style:left="{tick.x}px" style:top="{top}px" style:height="{layout.axisY - top + 6}px" style:opacity={tick.opacity}></div>
-        <span class="tick-label eu-data" class:shown={labelShown(tick)} style:left="{tick.x}px" style:top="{layout.axisY + 8}px">{tick.label}</span>
+        <span class="tick-label eu-data" class:shown={labels.has(tick.days)} style:left="{labels.get(tick.days) ?? tick.x}px" style:top="{layout.axisY + 8}px">{tick.label}</span>
       {/each}
     </div>
 
@@ -245,7 +282,7 @@
         {/each}
         {#each track.events as event (event.ref.index)}
           {#if event.to - event.from > marker}
-            <span class="whisker" aria-hidden="true" style:left="{Math.max(event.from, -marker)}px" style:width="{Math.min(event.to, width + marker) - Math.max(event.from, -marker)}px" style:top="{event.y + event.h / 2 - 5}px"></span>
+            <span class="whisker" aria-hidden="true" style:left="{Math.max(event.from, -marker)}px" style:width="{Math.min(event.to, width + marker) - Math.max(event.from, -marker)}px" style:top="{event.y + event.h / 2 + marker / 2 + 2}px"></span>
           {/if}
           <!-- svelte-ignore a11y_click_events_have_key_events, a11y_interactive_supports_focus -->
           <div
@@ -313,7 +350,8 @@
 
   .plot {
     position: relative;
-    overflow: hidden;
+    /* Clip, not hidden: nothing may scroll the plot sideways, since the view does that. */
+    overflow: clip;
     cursor: grab;
     touch-action: pan-y;
     user-select: none;
@@ -498,6 +536,12 @@
     background: var(--hover);
   }
 
+  /* An event's ring is drawn close around its marker, clear of the label beside it. */
+  .plot:focus-visible .event.active,
+  .event.selected {
+    outline-offset: calc(-1 * var(--space-3));
+  }
+
   .diamond {
     box-sizing: border-box;
     border: 2px solid var(--ink);
@@ -510,22 +554,15 @@
     background: var(--surface-raised);
   }
 
+  /* The stretch a loose date covers, as a bracket under its marker: "1846" is a year wide,
+     "the 1830s" ten. Under, so that it never runs through the label. */
   .whisker {
     position: absolute;
-    height: 10px;
+    height: 6px;
     box-sizing: border-box;
     border: solid var(--ink-muted);
-    border-width: 0 2px;
+    border-width: 0 2px 2px;
     pointer-events: none;
-  }
-
-  .whisker::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 4px;
-    border-top: 2px solid var(--ink-muted);
   }
 
   @media (max-width: 640px) {

@@ -24,6 +24,8 @@ describe('a timeline in a link', () => {
     expect(read.timeline).toEqual(example.timeline);
     // The query string alone will do.
     expect(timelineFromLink(new URL(link).search)!.timeline).toEqual(example.timeline);
+    expect(timelineFromLink(new URL(link).search.slice(1))!.timeline).toEqual(example.timeline);
+    expect(timelineFromLink(`/${new URL(link).search}`)!.timeline).toEqual(example.timeline);
     expect(new URL(link).searchParams.has('cal')).toBe(example.timeline.calendar !== null);
   });
 

@@ -6,9 +6,9 @@ Three parts: what comes next, what each release added (newest first), and what's
 
 ## Where to pick up
 
-**Now: step 4, the core, is done (4a to 4h). Carry on at step 5, the site: start with 5a.** Stijn agreed to the plan on 14 November 2026. Each finished part is ticked below.
+**Now: the site is built (step 5) and passes every check that runs on this machine. What is left is in "Before the door" below.** Stijn agreed to the plan on 14 November 2026.
 
-Run `npm install`, then `npm run check` and `npm test`: both must pass before and after every part.
+Run `npm install`, then `npm run check`, `npm run build`, `npm test` and `npm run axe`: all four must pass before and after every change. Astro wants a newer Node than 22.14: put Homebrew's `node@26` first on `PATH` if the default is older.
 
 Check these two before each working session, because they decide what may be built:
 
@@ -21,7 +21,7 @@ Check these two before each working session, because they decide what may be bui
 
 ### Step 4: the core, as plain TypeScript with tests (no site)
 
-Everything lives in `src/time/` and `src/content/`, tested with Vitest in `tests/`. No Astro, Svelte or `@eurth/style` in this step. Commit and push after each letter, and tick it off here.
+Everything lives in `src/tool/` (it began as `src/time/` and moved when the site was started from the starter template) and `src/content/`, tested with Vitest in `tests/`. No Astro, Svelte or `@eurth/style` in this step. Commit and push after each letter, and tick it off here.
 
 - [x] **4a. Skeleton and dates.** `package.json` (TypeScript and Vitest only, Node 22), `tsconfig.json`, `vitest.config.ts`, `LICENSE` (Apache 2.0), `docs/feedback-log.md`, CI that checks and tests.
   - `dates.ts`: the small interface the rest of the tool sees, `DateEngine`: day number of a date and back, the start and length of a year, the parts of a year (months and days outside the months), year labels ("1022 FS", "3 Before the Founding"). A day number is a whole number, 0 for day 1 of year 1, the same count `@eurth/calendar` uses, so its `Calendar` drops in behind the interface without touching anything else.
