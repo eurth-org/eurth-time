@@ -28,7 +28,7 @@
     faTrash,
     faXmark,
   } from '@fortawesome/free-solid-svg-icons';
-  import { createProfile, getSection, setSection, type EurthProfile } from '@eurth/profile';
+  import { createProfile, getSection, pickProfile, setSection, type EurthProfile } from '@eurth/profile';
   import ProfileButtons from '@eurth/profile/ProfileButtons.svelte';
   import { PICTURE_SIZES, calm, copyText, download, fileSlug, getPrefs, resolveColors, svgToPicture, toast } from '@eurth/style';
   import Icon from '@eurth/style/components/Icon.svelte';
@@ -38,7 +38,8 @@
   import { EXAMPLES } from '../content/examples';
   import { clampView, defaultView, fitView, panView, resizeView, viewLabel, viewPrecision, xOf, zoomView, type View } from './axis';
   import Chart from './Chart.svelte';
-  import { timelineCsv, timelineFromCsv } from './csv';
+  import { convertTimeline } from './convert';
+import { timelineCsv, timelineFromCsv } from './csv';
   import { calendarName, countLine, describeItem, describeTimeline, descriptionText } from './describe';
   import { embedCode, embedHeight, embedLink } from './embed';
   import { engineFor, type CalendarData } from './engine';
@@ -528,6 +529,41 @@
     toast(`Added ${addedLine(merged.added)} from ${from}. Undo takes them out again.`);
   }
 
+  // Tracks from someone else's timeline: this is how a shared history is built without accounts.
+  // Their dates are turned into this timeline's calendar when the two calendars can be compared.
+  let otherLink = $state('');
+
+  function addOther(other: Timeline | null, from: string) {
+    if (other === null || (other.tracks.length === 0 && other.eras.length === 0)) {
+      toast(`There is no timeline in ${from}.`);
+      return false;
+    }
+    const turned = convertTimeline(other, timeline.calendar);
+    if (turned === null) {
+      toast(`Its dates are in ${calendarName(engineFor(other.calendar))}, and can't be turned into ${calendarName(engine)}: both calendars need a link to Earth's for that.`);
+      return false;
+    }
+    bringIn(turned.timeline, turned.converted ? `${from}, with its dates turned into ${calendarName(engine)}` : from);
+    return true;
+  }
+
+  function addFromLink(event: SubmitEvent) {
+    event.preventDefault();
+    // Only read, never opened: the timeline is in the link's own text.
+    if (addOther(timelineFromLink(otherLink.trim())?.timeline ?? null, 'that link')) otherLink = '';
+  }
+
+  async function addFromProfile() {
+    const picked = await pickProfile();
+    if (picked === null) return;
+    if (!picked.ok) {
+      toast(picked.errors[0]?.message ?? "That file isn't a nation profile. Pick one that ends in .eurth.json.");
+      return;
+    }
+    const read = readProfile(picked.profile);
+    addOther(read.found ? read.timeline : null, `${picked.profile.meta.nation || 'that nation'}'s profile`);
+  }
+
   async function importCsv() {
     const text = await pickText('.csv,text/csv');
     if (text === null) return;
@@ -752,6 +788,17 @@
             <a class="eu-btn" href={calendarMaker} data-same-tab>Make a calendar of your own</a>
           {/if}
         </div>
+        <form class="eu-stack other" onsubmit={addFromLink}>
+          <label class="eu-field">
+            <span class="eu-label">Add tracks from another timeline</span>
+            <input class="eu-input eu-input--data" bind:value={otherLink} placeholder="Paste its link" autocomplete="off" inputmode="url" aria-describedby="time-other-help" />
+          </label>
+          <div class="eu-row">
+            <button type="submit" class="eu-btn" disabled={otherLink.trim() === ''}><Icon icon={faPlus} /> Add its tracks</button>
+            <button type="button" class="eu-btn" onclick={addFromProfile}><Icon icon={faFileImport} /> From a profile</button>
+          </div>
+          <p class="eu-help" id="time-other-help">A friend's nation beside yours: their tracks join this timeline, and theirs stays as it was.</p>
+        </form>
       {:else}
         <p><a class="eu-btn" href={timelineLink(base, timeline, true)} target="_top">Open in {siteName}</a></p>
       {/if}

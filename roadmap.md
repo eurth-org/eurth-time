@@ -32,12 +32,11 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 
 1. **Dynasty reigns.** The profile's `dynasty` section holds no dates, so Time reads a `reigns` list from it when Dynasty writes one (a name, `from`, and `to` unless still reigning; years, compact dates or dates in words) and offers "Add the reigns of…" when it finds one. Until then nothing shows. The shape asked for is in the shared notes of the sessions that built the tools.
 2. **The whole timeline in the profile.** The handbook says a section is small; the brief says any timeline can be saved in the profile, since a long one can't fit a link. Time follows the brief the way Calendar does: the schema's own small fields as a digest, and the whole timeline under `timeline.definition`. The schema keeps unknown keys, so nothing had to change in `@eurth/profile`.
-3. **"Collaborators can add their nation as a track"** (on the mock-up, not in the brief) comes after the first version: it is the first item under "Later".
+3. **"Collaborators can add their nation as a track"** (on the mock-up, not in the brief) came after the first version, in 0.2.0: paste a friend's link or pick their profile, and their tracks join yours.
 4. **The page is called "Timeline",** as the brief has it, not "Maker" as on the mock-up.
 
 ### Later
 
-- **Add tracks from someone else's timeline:** load a second link or profile and take its tracks, which is how a shared world's history gets built without accounts.
 - **A reality check,** as Flagwright checks a flag: reigns of ninety years, a cathedral built in a summer, news that crosses an ocean in a day. The guide's table of how long things take is already data (`src/content/guide.ts`).
 - **A second calendar on the same axis,** so two nations can each read the timeline in their own reckoning.
 - **Group and collapse tracks** (a continent, an alliance).
@@ -50,6 +49,7 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 
 Still not live: the door is 17 December.
 
+- **Tracks from someone else's timeline.** Paste a link or pick a profile, and its tracks and eras join yours; theirs stays as it was. That is how a shared world's history is built without accounts. When the two timelines are in different calendars and both are tied to Earth, the newcomer's dates are turned into yours: a day stays the same day, a month or a year becomes the one its middle falls in, and a decade or century becomes "about" a year. When either calendar has no link to Earth, Time says so and adds nothing.
 - **Import from CSV.** The columns the export writes, in any order, or a sheet typed by hand with a title and a date in each row; dates are read from the compact code when it is there, otherwise from the words, in the timeline's calendar. Rows join the track of their name or start a new one, and nothing already there is added twice. What can't be dated is left out, and undo takes the whole import out again.
 - **WebP beside PNG** for the picture, in the same sizes. A browser that can't make a WebP hands back a PNG, and Time says so and names the file for what it is.
 

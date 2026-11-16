@@ -13,6 +13,7 @@ import {
   decodeCalendar as decodePacked,
   encodeCalendar as encodePacked,
   GREGORIAN,
+  gregorianToRataDie,
   normalizeCalendar,
   shortName,
   type Calendar,
@@ -50,6 +51,12 @@ export interface DateEngine {
   readonly maxYear: number;
   /** The average length of a year in days, leap years included. */
   readonly meanYear: number;
+  /**
+   * Where this calendar's day 0 falls in Earth's count of days, in which day 0 is 1 January of
+   * year 1 of the Gregorian calendar. Null when the calendar has no link to Earth, and then its
+   * dates can't be turned into any other calendar's.
+   */
+  readonly earth: number | null;
   /** The day number of the first day of a year, from minYear to maxYear + 1. */
   yearStart(year: number): number;
   /** The year a day number falls in. */
@@ -83,6 +90,13 @@ export function cleanCalendar(calendar: unknown): CalendarData {
   }
 }
 
+/** The day 0 of a calendar in Earth's count, from the Gregorian date the calendar gives for it. */
+function earthOf(calendar: Calendar): number | null {
+  const first = calendar.linked ? calendar.toGregorian(0) : null;
+  // The package counts days from 1 (rata die); Time counts from 0, as it does in every calendar.
+  return first === null ? null : gregorianToRataDie(first) - 1;
+}
+
 function wrap(calendar: Calendar): DateEngine {
   const definition = calendar.definition;
   return {
@@ -94,6 +108,7 @@ function wrap(calendar: Calendar): DateEngine {
     minYear: calendar.minYear,
     maxYear: calendar.maxYear,
     meanYear: calendar.meanYear,
+    earth: earthOf(calendar),
     yearStart: (year) => calendar.yearStart(year),
     yearOf: (days) => calendar.yearOf(days),
     parts: (year) => calendar.year(year).parts.map((part) => ({ kind: part.kind, index: part.index, name: part.name, days: part.days, start: part.start })),
