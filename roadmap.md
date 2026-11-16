@@ -21,15 +21,19 @@ Where things are:
 
 ### Before the door
 
-- **Stijn's word on four defaults.** Each is in place and works; each is his to overrule.
-  1. *Dynasty reigns.* The brief says reigns can become spans, but the profile's `dynasty` section holds no dates. Time reads a `reigns` list from that section when Dynasty writes one (a name, `from`, and `to` unless still reigning; years, compact dates or dates in words), and offers "Add the reigns of…" when it finds one. Until Dynasty writes it, nothing shows. The shape asked for is in the shared notes of the sessions that built the tools.
-  2. *The whole timeline in the profile.* The handbook says a section is small and is not a tool's whole state; the brief says any timeline can be saved in the profile, since a long one can't fit a link. Time follows the brief the way Calendar does: the schema's own small fields as a digest, and the whole timeline under `timeline.definition`. The schema keeps unknown keys, so nothing had to change in `@eurth/profile`.
-  3. *"Collaborators can add their nation as a track"* is on the mock-up and not in the brief. With no accounts it can only mean loading a second link or profile and taking its tracks: under "Later".
-  4. *The page's name.* The mock-up's menu says "Maker", the brief says "Timeline". It is "Timeline".
 - **A bare page for embeds, in `@eurth/style`.** The handbook's checks ask every page for the shared shell, so the embed page (`/embed/?t=…`) carries the header and footer inside its frame. It works and it is honest, but a timeline in a forum post wants less. The handbook is silent on embeds, so this is a request to `@eurth/style` (a `Page` without the shell, still under the same headers), not something to work around here.
 - **Try it with the real calendar maker,** once that site exists: its "Use in a timeline" link should open `time.eurth.org/?cal=…`, and Time should show an empty timeline in that calendar. The reading side is tested against the package's own packed form.
 - **Hands and ears.** Pinch to zoom on a real phone, and a pass with a screen reader over the chart's listbox. Both are built to the standards and checked by axe; neither has been tried on a device.
 - **The launch** is `.github/workflows/launch.yml`: it starts at 22:30 UTC on 16 December 2026, builds for the door's time, waits for `LAUNCH_AT` and deploys. If it hasn't started by 22:45 UTC, start it by hand. Afterwards: delete that file, submit the sitemap, and tell the forum.
+
+### Decided
+
+Stijn settled these on 16 November 2026. They are how Time works, not open questions.
+
+1. **Dynasty reigns.** The profile's `dynasty` section holds no dates, so Time reads a `reigns` list from it when Dynasty writes one (a name, `from`, and `to` unless still reigning; years, compact dates or dates in words) and offers "Add the reigns of…" when it finds one. Until then nothing shows. The shape asked for is in the shared notes of the sessions that built the tools.
+2. **The whole timeline in the profile.** The handbook says a section is small; the brief says any timeline can be saved in the profile, since a long one can't fit a link. Time follows the brief the way Calendar does: the schema's own small fields as a digest, and the whole timeline under `timeline.definition`. The schema keeps unknown keys, so nothing had to change in `@eurth/profile`.
+3. **"Collaborators can add their nation as a track"** (on the mock-up, not in the brief) comes after the first version: it is the first item under "Later".
+4. **The page is called "Timeline",** as the brief has it, not "Maker" as on the mock-up.
 
 ### Later
 
