@@ -77,6 +77,8 @@ export type KeyAction =
   | { type: 'move'; how: Move }
   | { type: 'zoom'; factor: number }
   | { type: 'pan'; fraction: number }
+  /** Move the thing the keyboard is on earlier (-1) or later (1); `end` moves only a span's end. */
+  | { type: 'nudge'; by: -1 | 1; end: boolean }
   | { type: 'fit' }
   | { type: 'open' }
   | { type: 'close' };
@@ -88,7 +90,12 @@ export const ZOOM_STEP = 1.5;
  * The action for a key, or null for a key the timeline leaves alone (Tab above all: focus must
  * be free to leave). `key` is KeyboardEvent.key.
  */
-export function keyAction(key: string, modifiers: { shift?: boolean } = {}): KeyAction | null {
+export function keyAction(key: string, modifiers: { shift?: boolean; alt?: boolean } = {}): KeyAction | null {
+  if (modifiers.alt) {
+    // Alt with an arrow moves the thing itself, as it moves a line in an editor.
+    if (key === 'ArrowRight' || key === 'ArrowLeft') return { type: 'nudge', by: key === 'ArrowRight' ? 1 : -1, end: modifiers.shift === true };
+    return null;
+  }
   switch (key) {
     case 'ArrowRight':
       return modifiers.shift ? { type: 'pan', fraction: 0.2 } : { type: 'move', how: 'right' };
@@ -135,6 +142,8 @@ export const KEY_HELP: readonly { keys: string; does: string }[] = Object.freeze
   { keys: '+ and -', does: 'Zoom in and out' },
   { keys: '0', does: 'Show the whole timeline' },
   { keys: 'Shift with Left or Right', does: 'Slide earlier or later' },
+  { keys: 'Alt with Left or Right', does: 'Move the thing itself earlier or later: by a day, a month or a year, as the zoom has it' },
+  { keys: 'Alt and Shift with Left or Right', does: 'Move only the end of a span or an era' },
 ]);
 
 /**

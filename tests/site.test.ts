@@ -64,6 +64,8 @@ describe.skipIf(!built)('the timeline page, before any script runs', () => {
     }
     expect(text(embed)).toContain('There is no timeline in this link.');
     expect(embed).not.toContain('role="listbox"');
+    // Nothing to carry about where nothing can be changed.
+    expect(embed).not.toContain('data-part');
   });
 });
 

@@ -55,6 +55,7 @@ import { SHEET_CHOICES, printSheets } from './print';
   import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setAlso, setCalendar, setTitle, updateItem, updateTrack } from './ops';
   import { readProfile, toProfileSection } from './profile';
 import { reviewTimeline } from './review';
+import { moveInTime, shiftDate, stepDate, type Part } from './shift';
   import { pictureName, timelineSvg } from './svg';
   import { TONES, svgTheme } from './theme';
   import { timelineWikitext } from './wikitext';
@@ -95,7 +96,9 @@ import { reviewTimeline } from './review';
   let ready = $state(false);
   let fitted = false;
 
-  const timeline = $derived(story.present);
+  /** The timeline as it would be if the thing being dragged were let go now: shown while the drag lasts, never recorded. */
+  let preview = $state.raw<Timeline | null>(null);
+  const timeline = $derived(preview ?? story.present);
   const engine = $derived(engineFor(timeline.calendar));
   /** The second calendar the axis and the cards are read in, when there is one. */
   const also = $derived(timeline.also === null ? null : engineFor(timeline.also));
@@ -116,8 +119,9 @@ import { reviewTimeline } from './review';
   // Before the page has loaded there is no address to read: the site's own, then. After, the
   // address the page is really at, which is the same thing once the site is live.
   const base = $derived(ready ? `${location.origin}/` : `${siteUrl}/`);
-  const isStart = $derived(timeline.calendar === null && encodeTimeline(timeline) === START_PACKED);
-  const link = $derived(isStart ? base : timelineLink(base, timeline, true));
+  // The link, like the profile file, follows what has been let go, not a drag still in the hand.
+  const isStart = $derived(story.present.calendar === null && story.present.also === null && encodeTimeline(story.present) === START_PACKED);
+  const link = $derived(isStart ? base : timelineLink(base, story.present, true));
   const fits = $derived(linkFits(link));
   const name = $derived(timeline.title === '' ? 'A timeline' : timeline.title);
 
@@ -276,10 +280,36 @@ import { reviewTimeline } from './review';
       }
     } else if (action.type === 'zoom') zoom(action.factor);
     else if (action.type === 'pan') glide(panView(engine, heading(), action.fraction * view.width));
+    else if (action.type === 'nudge') nudge(action.by, action.end);
     else if (action.type === 'fit') glide(wholeView(timeline, width));
     else if (action.type === 'open') {
       if (active !== null) pick(active);
     } else clear();
+  }
+
+  /** Alt with an arrow: the thing the keyboard is on moves by a day, a month or a year, as the zoom has it. */
+  function nudge(by: -1 | 1, end: boolean) {
+    if (embed || active === null) return;
+    const unit = viewPrecision(engine, heading());
+    const ref = active;
+    const next = moveInTime(timeline, engine, ref, end ? 'to' : 'all', (date) => stepDate(engine, date, unit, by));
+    if (next === timeline) return;
+    commit(next);
+    // Its card opens, so that the new date is said as well as shown.
+    pick(ref);
+    reveal(ref);
+  }
+
+  /** A drag of the selected thing: shown as it goes, recorded once when it is let go. */
+  function shift(ref: Ref, part: Part, days: number, done: boolean) {
+    const from = story.present;
+    const next = days === 0 ? from : moveInTime(from, engine, ref, part, (date) => shiftDate(engine, date, days));
+    if (!done) {
+      preview = next === from ? null : next;
+      return;
+    }
+    preview = null;
+    if (next !== from) commit(next);
   }
 
   function step(to: typeof story) {
@@ -516,7 +546,7 @@ import { reviewTimeline } from './review';
   const saved = $derived.by(() => {
     const from = profile ?? createProfile('');
     const { link: _old, ...kept } = (getSection(from, 'timeline') ?? {}) as Record<string, unknown>;
-    return setSection(from, 'timeline', { ...kept, ...toProfileSection(timeline, fits ? { link } : {}) });
+    return setSection(from, 'timeline', { ...kept, ...toProfileSection(story.present, fits ? { link } : {}) });
   });
 
   // Exports: the picture is of what is on screen, in the theme that is on screen.
@@ -696,7 +726,7 @@ import { reviewTimeline } from './review';
   {/if}
 
   <div class="eu-card sheet">
-    <Chart {timeline} {engine} {also} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ongrab={settle} ongroup={toggleGroup} ontrack={(index) => { clear(); selectedTrack = index; }} />
+    <Chart {timeline} {engine} {also} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ongrab={settle} onshift={shift} ongroup={toggleGroup} ontrack={(index) => { clear(); selectedTrack = index; }} />
     {#if empty}
       <p class="eu-muted">{embed ? 'There is no timeline in this link.' : 'Nothing here yet. Add a track for a nation, then give it an event or a span.'}</p>
     {/if}

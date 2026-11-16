@@ -14,13 +14,14 @@
    */
   import { faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons';
   import Icon from '@eurth/style/components/Icon.svelte';
-  import { labelShown, panView, ticks, zoomView, type Tick, type View } from './axis';
+  import { labelShown, panView, scaleOf, ticks, zoomView, type Tick, type View } from './axis';
   import { viewIn } from './convert';
   import { describeItem } from './describe';
   import type { DateEngine } from './engine';
   import { layoutTimeline, type LayoutOptions } from './layout';
   import { sameRef, type Ref, type Timeline } from './model';
   import { keyAction, type KeyAction } from './nav';
+  import type { Part } from './shift';
 
   let {
     timeline,
@@ -38,6 +39,7 @@
     ontrack,
     ongroup,
     ongrab,
+    onshift,
   }: {
     timeline: Timeline;
     engine: DateEngine;
@@ -61,6 +63,11 @@
     ongroup?: (name: string) => void;
     /** Called when a hand takes hold of the view: a glide in progress should stop. */
     ongrab?: () => void;
+    /**
+     * Called while the selected thing is dragged, and once more when it is let go (`done`):
+     * which part of it is held, and how many days it has been carried.
+     */
+    onshift?: (ref: Ref, part: Part, days: number, done: boolean) => void;
   } = $props();
 
   let plot: HTMLDivElement | undefined = $state();
@@ -124,10 +131,19 @@
   let drag: { x: number; view: View; moved: boolean } | null = null;
   let pinch: { distance: number; view: View; middle: number } | null = null;
   let dragged = false;
+  /** The selected thing, held by the pointer: a drag moves it in time instead of sliding the view. */
+  let hold: { ref: Ref; part: Part; x: number; moved: boolean } | null = null;
 
   function down(event: PointerEvent) {
     if (event.button !== 0) return;
     ongrab?.();
+    const target = event.target instanceof Element ? event.target : null;
+    const option = target?.closest('[role=option]') ?? null;
+    if (!readonly && onshift && selected !== null && option !== null && option.id === idOf(selected) && pointers.size === 0) {
+      const part = target?.closest<HTMLElement>('[data-part]')?.dataset.part;
+      hold = { ref: selected, part: part === 'from' || part === 'to' ? part : 'all', x: event.clientX, moved: false };
+      return;
+    }
     pointers.set(event.pointerId, event.clientX);
     if (pointers.size === 1) drag = { x: event.clientX, view, moved: false };
     else if (pointers.size === 2 && plot) {
@@ -138,6 +154,15 @@
   }
 
   function moved(event: PointerEvent) {
+    if (hold) {
+      const dx = event.clientX - hold.x;
+      if (!hold.moved && Math.abs(dx) < 5) return;
+      if (!hold.moved) plot?.setPointerCapture(event.pointerId);
+      hold.moved = true;
+      dragged = true;
+      onshift?.(hold.ref, hold.part, dx / scaleOf(view), false);
+      return;
+    }
     if (!pointers.has(event.pointerId)) return;
     pointers.set(event.pointerId, event.clientX);
     if (pinch && pointers.size === 2) {
@@ -155,6 +180,11 @@
   }
 
   function up(event: PointerEvent) {
+    if (hold) {
+      // Let go: the move is made. A pointer that was taken away (cancelled) puts the thing back.
+      if (hold.moved) onshift?.(hold.ref, hold.part, event.type === 'pointercancel' ? 0 : (event.clientX - hold.x) / scaleOf(view), true);
+      hold = null;
+    }
     pointers.delete(event.pointerId);
     drag = null;
     if (pointers.size < 2) pinch = null;
@@ -170,8 +200,8 @@
   }
 
   function keydown(event: KeyboardEvent) {
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const action = keyAction(event.key, { shift: event.shiftKey });
+    if (event.ctrlKey || event.metaKey) return;
+    const action = keyAction(event.key, { shift: event.shiftKey, alt: event.altKey });
     if (action === null) return;
     event.preventDefault();
     onkey(action);
@@ -294,6 +324,10 @@
             onclick={() => pick(era.ref)}
           >
             <span class="era-label" aria-hidden="true">{era.text}</span>
+            {#if !readonly && sameRef(selected, era.ref)}
+              {#if !era.openStart}<span class="handle start" data-part="from" aria-hidden="true"></span>{/if}
+              {#if !era.openEnd}<span class="handle end" data-part="to" aria-hidden="true"></span>{/if}
+            {/if}
           </div>
         {/each}
       </div>
@@ -321,6 +355,10 @@
             <span class="solid" class:cut={span.softStart > 0 || span.softEnd > 0} aria-hidden="true" style:left="{span.softStart}px" style:right="{span.softEnd}px"></span>
             {#if span.place === 'inside'}<span class="bar-label" aria-hidden="true" style:left="{span.softStart + barPad}px">{span.text}</span>{/if}
             {#if span.ongoing && span.w >= 32}<span class="going" aria-hidden="true"></span>{/if}
+            {#if !readonly && sameRef(selected, span.ref) && span.w >= 32}
+              {#if !span.openStart}<span class="handle start" data-part="from" aria-hidden="true"></span>{/if}
+              {#if !span.openEnd && !span.ongoing}<span class="handle end" data-part="to" aria-hidden="true"></span>{/if}
+            {/if}
           </div>
           {#if span.place === 'after'}
             <span class="beside bold" aria-hidden="true" style:left="{span.x + span.w + labelGap}px" style:top="{span.y}px" style:height="{span.h}px">{span.text}</span>
@@ -508,6 +546,40 @@
     outline: var(--size-ring) solid var(--focus-ring);
     outline-offset: var(--size-ring);
     z-index: 2;
+  }
+
+  /* The thing whose card is open can be carried along the axis; a span or an era also by either end. */
+  .selected {
+    cursor: grab;
+  }
+
+  .handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--space-3);
+    cursor: ew-resize;
+  }
+
+  .handle.start {
+    left: 0;
+  }
+
+  .handle.end {
+    right: 0;
+  }
+
+  .handle::after {
+    content: '';
+    position: absolute;
+    top: 25%;
+    bottom: 25%;
+    left: 50%;
+    border-left: 2px solid var(--surface);
+  }
+
+  .era .handle::after {
+    border-left-color: var(--ink-muted);
   }
 
   .era {
