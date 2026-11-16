@@ -1,0 +1,69 @@
+---
+// Examples: three invented histories, each in a different calendar, each a link into the tool.
+// The pictures and the links are made at build time with the same code the tool uses, so they
+// can never drift apart.
+import Page from '@eurth/style/components/Page.astro';
+import { site } from '../../eurth.config.mjs';
+import { EXAMPLES } from '../content/examples';
+import { exampleHref, examplePicture } from '../content/pictures';
+
+const examples = EXAMPLES.map((example, index) => ({ example, picture: examplePicture(example), href: exampleHref(example, index === 0) }));
+---
+
+<Page
+  site={site}
+  title="Example timelines"
+  description="Three invented histories to start from, each dated in a different calendar: a coast of rival nations, a kingdom with thirteen months, and another world entirely."
+  crumbs={[{ name: 'Examples', path: '/examples/' }]}
+>
+  <div class="eu-stack">
+    <header class="eu-prose">
+      <p class="eu-kicker">Examples</p>
+      <h1>Example timelines</h1>
+      <p class="eu-lead">
+        Three histories that never happened, each in a calendar of its own. Open one in the <a href="/">timeline</a> and change what you like; the <a href="/guide/">guide</a>
+        says what makes a history convince.
+      </p>
+    </header>
+    <ul class="gallery">
+      {
+        examples.map(({ example, picture, href }) => (
+          <li>
+            <a class="eu-card" href={href}>
+              <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(picture.svg)}`} alt={picture.alt} width={picture.width} height={picture.height} loading="lazy" />
+              <h2>{example.timeline.title}</h2>
+              <p class="eu-kicker">{example.calendarName}</p>
+              <p>{example.pitch}</p>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Page>
+
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gallery img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+  }
+
+  .gallery h2 {
+    font: var(--type-heading);
+  }
+
+  .gallery p {
+    margin: 0;
+  }
+</style>

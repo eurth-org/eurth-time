@@ -1,5 +1,5 @@
 import { KHARAN, MERIDIAN, SELUNNAN, TIDEWATCH } from '../../src/content/calendars';
-import { engineFor, type DateEngine } from '../../src/time/engine';
+import { engineFor, type DateEngine } from '../../src/tool/engine';
 
 export const gregorian = engineFor(null);
 export const selunnan = engineFor(SELUNNAN);

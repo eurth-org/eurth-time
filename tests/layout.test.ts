@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { EXAMPLES, exampleById } from '../src/content/examples';
-import { allTime, clampView, fitView, MIN_VISIBLE_DAYS, xOf, zoomView, type View } from '../src/time/axis';
-import { yearEnd, yearStart } from '../src/time/dates';
-import { engineFor } from '../src/time/engine';
-import { LAYOUT_DEFAULTS, extentOf, fitText, guessWidth, layoutTimeline, packRows } from '../src/time/layout';
-import { emptyTimeline } from '../src/time/model';
-import { normalizeTimeline } from '../src/time/normalize';
+import { allTime, clampView, fitView, MIN_VISIBLE_DAYS, xOf, zoomView, type View } from '../src/tool/axis';
+import { yearEnd, yearStart } from '../src/tool/dates';
+import { engineFor } from '../src/tool/engine';
+import { LAYOUT_DEFAULTS, extentOf, fitText, guessWidth, layoutTimeline, packRows } from '../src/tool/layout';
+import { emptyTimeline } from '../src/tool/model';
+import { normalizeTimeline } from '../src/tool/normalize';
 import { between, gregorian, random } from './helpers/engines';
 
 const coast = exampleById('oriental-coast')!.timeline;

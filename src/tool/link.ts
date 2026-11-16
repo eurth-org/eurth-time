@@ -112,14 +112,16 @@ export function decodeTimeline(text: unknown, calendar: CalendarData = null): { 
 
 /**
  * The link for a timeline: the address given, with the timeline and its calendar as its only
- * query parameters. An empty timeline in the Gregorian calendar is the plain address.
+ * query parameters. An empty timeline in the Gregorian calendar is the plain address, unless
+ * `always` asks for the parameter all the same: the site does, because its plain address
+ * opens an example and an emptied timeline must stay empty.
  */
-export function timelineLink(base: string, timeline: Timeline): string {
+export function timelineLink(base: string, timeline: Timeline, always = false): string {
   const url = new URL(base);
   url.search = '';
   url.hash = '';
   const empty = timeline.title === '' && timeline.eras.length === 0 && timeline.tracks.length === 0;
-  if (!empty) url.searchParams.set(TIMELINE_PARAM, encodeTimeline(timeline));
+  if (!empty || always) url.searchParams.set(TIMELINE_PARAM, encodeTimeline(timeline));
   if (timeline.calendar !== null) url.searchParams.set(CALENDAR_PARAM, encodeCalendar(timeline.calendar));
   return url.toString();
 }

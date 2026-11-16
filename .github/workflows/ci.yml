@@ -1,5 +1,5 @@
-# Check and test on every push and pull request. Once the site is started from the
-# @eurth/style starter (roadmap, step 5), this gives way to the suite's shared workflow.
+# Check, build and test on every push and pull request; axe and Lighthouse on main; deploy main
+# once the door has opened. All of it lives in @eurth/style, so every tool stays in step.
 name: CI
 
 on:
@@ -8,14 +8,6 @@ on:
   pull_request:
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - run: npm ci
-      - run: npm run check
-      - run: npm test
+  ci:
+    uses: eurth-org/eurth-style/.github/workflows/tool-ci.yml@v1
+    secrets: inherit

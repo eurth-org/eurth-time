@@ -1,0 +1,30 @@
+---
+// The page an embed shows: a timeline to read, with nothing to edit. It is for an iframe on
+// eurth.org (the suite's security headers allow that and nothing else), with the timeline in
+// the link: /embed/?t=…&cal=…  It is a page like any other, so it works when opened by itself.
+import Page from '@eurth/style/components/Page.astro';
+import { site } from '../../eurth.config.mjs';
+import Timeline from '../tool/Timeline.svelte';
+---
+
+<Page
+  site={site}
+  title="A timeline, embedded"
+  description="A history timeline made with Time, to read where it is embedded: slide through it, zoom, and choose an event or a span to see its card."
+  crumbs={[{ name: 'Embedded timeline', path: '/embed/' }]}
+>
+  <div class="eu-stack">
+    <header class="eu-stack intro">
+      <p class="eu-kicker">Made with Time</p>
+      <h1>A timeline, embedded</h1>
+      <p class="eu-muted">Slide through it, zoom in and out, and choose an event or a span to read about it. To make one of your own, open the <a href="/">timeline</a>.</p>
+    </header>
+    <Timeline client:load siteName={site.name} siteUrl={site.url} embed />
+  </div>
+</Page>
+
+<style>
+  .intro {
+    gap: var(--space-2);
+  }
+</style>

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { EXAMPLES, exampleById } from '../src/content/examples';
-import { fitView, xOf, type View } from '../src/time/axis';
-import { yearStart } from '../src/time/dates';
-import { engineFor } from '../src/time/engine';
-import { countLine, describeItem, describeTimeline, descriptionText, formatDuration, formatStretch, itemLine, stretchDuration } from '../src/time/describe';
-import { extentOf } from '../src/time/layout';
-import { countItems, emptyTimeline, titleOf, getItem, type Ref } from '../src/time/model';
-import { KEY_HELP, ZOOM_STEP, keyAction, move, navOrder, revealView } from '../src/time/nav';
-import { addTrack } from '../src/time/ops';
+import { fitView, xOf, type View } from '../src/tool/axis';
+import { yearStart } from '../src/tool/dates';
+import { engineFor } from '../src/tool/engine';
+import { countLine, describeItem, describeTimeline, descriptionText, formatDuration, formatStretch, itemLine, stretchDuration } from '../src/tool/describe';
+import { extentOf } from '../src/tool/layout';
+import { countItems, emptyTimeline, titleOf, getItem, type Ref } from '../src/tool/model';
+import { KEY_HELP, ZOOM_STEP, keyAction, move, navOrder, revealView } from '../src/tool/nav';
+import { addTrack } from '../src/tool/ops';
 import { gregorian, kharan, selunnan } from './helpers/engines';
 
 const coast = exampleById('oriental-coast')!.timeline;

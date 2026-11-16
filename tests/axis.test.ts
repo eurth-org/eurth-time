@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_VISIBLE_DAYS, YEAR_STEPS, allTime, clampView, daysAt, defaultView, fitView, panView, resizeView, scaleOf, tickOpacity, ticks, viewLabel, viewPrecision, xOf, yearStep, zoomView, type View } from '../src/time/axis';
-import { BIG_BANG_DAYS, yearEnd, yearStart } from '../src/time/dates';
-import type { DateEngine } from '../src/time/engine';
+import { LABEL_SHOWN, MIN_VISIBLE_DAYS, YEAR_STEPS, allTime, clampView, daysAt, defaultView, fitView, labelShown, panView, resizeView, scaleOf, tickOpacity, ticks, viewLabel, viewPrecision, xOf, yearStep, zoomView, type View } from '../src/tool/axis';
+import { BIG_BANG_DAYS, yearEnd, yearStart } from '../src/tool/dates';
+import type { DateEngine } from '../src/tool/engine';
 import { ENGINES, between, gregorian, kharan, random, selunnan } from './helpers/engines';
 
 const years = (engine: DateEngine, from: number, to: number, width = 900): View => ({ start: yearStart(engine, from), end: yearStart(engine, to), width });
@@ -74,6 +74,11 @@ describe('labels that fade', () => {
     expect(tickOpacity(80, 56, 104)).toBeCloseTo(0.5, 9);
     expect(tickOpacity(104, 56, 104)).toBe(1);
     expect(tickOpacity(5000, 56, 104)).toBe(1);
+    // At rest a label is drawn or it is not: half-way in is the line.
+    expect(LABEL_SHOWN).toBe(0.5);
+    expect(labelShown({ days: 0, x: 0, unit: 'year', label: '1650', opacity: 0.5 })).toBe(true);
+    expect(labelShown({ days: 0, x: 0, unit: 'year', label: '1650', opacity: 0.49 })).toBe(false);
+    expect(labelShown({ days: 0, x: 0, unit: 'part', label: '', opacity: 1 })).toBe(false);
     let last = 0;
     for (let px = 50; px <= 110; px += 0.5) {
       const now = tickOpacity(px, 56, 104);

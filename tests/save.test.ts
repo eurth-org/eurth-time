@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { KHARAN, SELUNNAN } from '../src/content/calendars';
 import { EXAMPLES, exampleById } from '../src/content/examples';
-import { encodeCalendar, encodeJson, engineFor } from '../src/time/engine';
-import { encodeDate } from '../src/time/fuzzy';
-import { MAX_LINK_LENGTH, decodeTimeline, encodeTimeline, linkFits, timelineFromLink, timelineLink } from '../src/time/link';
-import { LIMITS, countItems, emptyTimeline } from '../src/time/model';
-import { normalizeTimeline } from '../src/time/normalize';
-import { calendarFromSection, fromProfileSection, readProfile, reignsFromDynasty, toProfileSection } from '../src/time/profile';
+import { encodeCalendar, encodeJson, engineFor } from '../src/tool/engine';
+import { encodeDate } from '../src/tool/fuzzy';
+import { MAX_LINK_LENGTH, decodeTimeline, encodeTimeline, linkFits, timelineFromLink, timelineLink } from '../src/tool/link';
+import { LIMITS, countItems, emptyTimeline } from '../src/tool/model';
+import { normalizeTimeline } from '../src/tool/normalize';
+import { calendarFromSection, fromProfileSection, readProfile, reignsFromDynasty, toProfileSection } from '../src/tool/profile';
 import { gregorian, selunnan } from './helpers/engines';
 
 const coast = exampleById('oriental-coast')!.timeline;
@@ -30,6 +30,9 @@ describe('a timeline in a link', () => {
   it('is the plain address for an empty timeline', () => {
     expect(timelineLink('https://time.eurth.org/?old=1#x', emptyTimeline())).toBe(BASE);
     expect(timelineFromLink(BASE)).toBeNull();
+    // The site asks for the parameter even then, so that an emptied timeline stays empty.
+    expect(timelineLink(BASE, emptyTimeline(), true)).toBe(`${BASE}?t=1.e30`);
+    expect(timelineFromLink(`${BASE}?t=1.e30`)).toEqual({ timeline: emptyTimeline(), issues: [] });
     expect(timelineFromLink('not a link')).toBeNull();
     expect(timelineFromLink('https://')).toBeNull();
   });

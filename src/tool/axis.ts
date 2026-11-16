@@ -5,7 +5,7 @@
  * the ticks follow, from thousands of millions of years down to single days. Each label has an
  * opacity that depends on how much room its kind of tick has, so labels fade in as you zoom in
  * and out as you zoom out, the way place names do on a map. That is Time's signature touch,
- * and it is all in tickOpacity().
+ * and it is all in tickOpacity() and labelShown().
  */
 import { MAX_YEAR, countsBack, formatYear, inRange, partsOf, yearEnd, yearNumber, yearOf, yearStart } from './dates';
 import type { DateEngine } from './engine';
@@ -126,6 +126,17 @@ export function tickOpacity(spacing: number, from: number, full: number): number
   const t = (spacing - from) / (full - from);
   return t * t * (3 - 2 * t);
 }
+
+/**
+ * A label is drawn once it is at least half-way in. At rest a label is fully there or not there
+ * at all, so it always meets the contrast the suite asks of text; the fading happens in the
+ * moment it crosses this line, as a short transition on the page. A tick's line has no such
+ * need and takes its opacity as it comes.
+ */
+export const LABEL_SHOWN = 0.5;
+
+/** Whether a tick's label should be drawn. */
+export const labelShown = (tick: Tick): boolean => tick.label !== '' && tick.opacity >= LABEL_SHOWN;
 
 /**
  * The steps between year ticks: 1, 5, 10, 50, 100 and so on. Each step divides the next, so a

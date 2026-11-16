@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { EXAMPLES } from '../src/content/examples';
 import { GLOSSARY_DESCRIPTION, GLOSSARY_TITLE, TERMS } from '../src/content/glossary';
 import { CHECKLIST, DURATIONS, GUIDE_DESCRIPTION, GUIDE_LEAD, GUIDE_SECTIONS, GUIDE_TITLE, GUIDE_UPDATED, SOURCES } from '../src/content/guide';
-import { describeTimeline, descriptionText } from '../src/time/describe';
-import { engineFor } from '../src/time/engine';
+import { describeTimeline, descriptionText } from '../src/tool/describe';
+import { engineFor } from '../src/tool/engine';
 
 /** Every word a visitor reads in the guide, the glossary and the examples. */
 const guideText = [GUIDE_TITLE, GUIDE_DESCRIPTION, GUIDE_LEAD, ...GUIDE_SECTIONS.flatMap((section) => [section.heading, ...section.paragraphs, ...(section.points ?? [])]), ...DURATIONS.flatMap((row) => [row.what, row.took, row.note]), ...SOURCES.map((source) => source.citation), ...CHECKLIST];

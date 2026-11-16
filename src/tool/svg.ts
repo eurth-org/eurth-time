@@ -11,7 +11,7 @@
  * drawn hollow or dashed, and the whole timeline is inside as words (<title> and <desc>).
  * Every text from the timeline is escaped: a title is someone else's input.
  */
-import { ticks, viewLabel, type TickOptions, type View } from './axis';
+import { labelShown, ticks, viewLabel, type TickOptions, type View } from './axis';
 import { describeItem, describeTimeline, descriptionText } from './describe';
 import type { DateEngine } from './engine';
 import { fitText, layoutTimeline, LAYOUT_DEFAULTS, type LayoutOptions } from './layout';
@@ -122,9 +122,7 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
   for (const tick of ticks(engine, view, options.ticks)) {
     if (tick.opacity <= 0) continue;
     out.push(`<line x1="${n(tick.x)}" y1="${n(top)}" x2="${n(tick.x)}" y2="${n(layout.axisY + 5)}" stroke="${theme.line}" stroke-opacity="${n(tick.opacity)}"/>`);
-    if (tick.label !== '') {
-      out.push(text(tick.x, layout.axisY + 20, tick.label, `${mono} text-anchor="middle" fill="${theme.muted}" fill-opacity="${n(tick.opacity)}"`));
-    }
+    if (labelShown(tick)) out.push(text(tick.x, layout.axisY + 20, tick.label, `${mono} text-anchor="middle" fill="${theme.muted}"`));
   }
 
   for (const era of layout.eras) {
@@ -145,10 +143,8 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
       const solidW = Math.max(0, span.w - span.softStart - span.softEnd);
       out.push(`<g><title>${escapeXml(`${span.label}, ${when}`)}</title>`);
       if (span.softStart > 0 || span.softEnd > 0) {
-        // The uncertain ends: paler, with a dashed edge.
-        out.push(
-          `<rect x="${n(span.x + 0.5)}" y="${n(span.y + 0.5)}" width="${n(Math.max(1, span.w - 1))}" height="${n(span.h - 1)}" rx="6" fill="${colour.fill}" fill-opacity="0.4" stroke="${colour.fill}" stroke-dasharray="4 3"/>`,
-        );
+        // The uncertain ends: hollow, with a dashed edge, as an uncertain event's marker is hollow.
+        out.push(`<rect x="${n(span.x + 1)}" y="${n(span.y + 1)}" width="${n(Math.max(1, span.w - 2))}" height="${n(span.h - 2)}" rx="6" fill="none" stroke="${colour.fill}" stroke-width="2" stroke-dasharray="4 3"/>`);
       }
       if (solidW > 0) out.push(`<rect x="${n(solidX)}" y="${n(span.y)}" width="${n(solidW)}" height="${n(span.h)}" rx="${span.softStart > 0 || span.softEnd > 0 ? 0 : 6}" fill="${colour.fill}"/>`);
       if (span.ongoing && span.w >= 28) {
@@ -157,7 +153,7 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
         const y = span.y + span.h / 2;
         out.push(`<path d="M${n(x)} ${n(y - 6)}L${n(x + 7)} ${n(y)}L${n(x)} ${n(y + 6)}" fill="none" stroke="${colour.ink}" stroke-width="2"/>`);
       }
-      if (span.place === 'inside') out.push(text(span.x + o.barPad, baseline(span.y, span.h), span.text, `${sans} font-weight="700" fill="${colour.ink}"`));
+      if (span.place === 'inside') out.push(text(solidX + o.barPad, baseline(span.y, span.h), span.text, `${sans} font-weight="700" fill="${colour.ink}"`));
       else if (span.place === 'after') out.push(text(span.x + span.w + o.labelGap, baseline(span.y, span.h), span.text, `${sans} font-weight="700" fill="${theme.ink}"`));
       out.push('</g>');
     }

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { EXAMPLES, exampleById } from '../src/content/examples';
 import { KHARAN, SELUNNAN } from '../src/content/calendars';
-import { engineFor } from '../src/time/engine';
-import { encodeDate, formatDate } from '../src/time/fuzzy';
-import { canRedo, canUndo, HISTORY_DEPTH, record, redo, startHistory, undo } from '../src/time/history';
-import { LIMITS, countItems, emptyTimeline, getItem, sameRef, titleOf, type Timeline } from '../src/time/model';
-import { cleanText, cleanUrl, normalizeTimeline } from '../src/time/normalize';
-import { addEra, addEvent, addSpan, addTrack, appendTracks, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from '../src/time/ops';
+import { engineFor } from '../src/tool/engine';
+import { encodeDate, formatDate } from '../src/tool/fuzzy';
+import { canRedo, canUndo, HISTORY_DEPTH, record, redo, startHistory, undo } from '../src/tool/history';
+import { LIMITS, countItems, emptyTimeline, getItem, sameRef, titleOf, type Timeline } from '../src/tool/model';
+import { cleanText, cleanUrl, normalizeTimeline } from '../src/tool/normalize';
+import { addEra, addEvent, addSpan, addTrack, appendTracks, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from '../src/tool/ops';
 
 const coast = exampleById('oriental-coast')!.timeline;
 const selunna = exampleById('selunna')!.timeline;

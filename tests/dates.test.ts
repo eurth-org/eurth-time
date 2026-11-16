@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BIG_BANG_DAYS, MAX_YEAR, compactNumber, formatYear, groupDigits, ordinal, partsOf, yearEnd, yearOf, yearStart } from '../src/time/dates';
-import { cleanCalendar, decodeCalendar, encodeCalendar, engineFor, isCalendar } from '../src/time/engine';
+import { BIG_BANG_DAYS, MAX_YEAR, compactNumber, formatYear, groupDigits, ordinal, partsOf, yearEnd, yearOf, yearStart } from '../src/tool/dates';
+import { cleanCalendar, decodeCalendar, encodeCalendar, engineFor, isCalendar } from '../src/tool/engine';
 import { KHARAN, SELUNNAN } from '../src/content/calendars';
 import { ENGINES, between, gregorian, kharan, meridian, random, selunnan, tidewatch } from './helpers/engines';
 

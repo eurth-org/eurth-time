@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_YEAR, partsOf, yearEnd, yearStart } from '../src/time/dates';
-import { cleanDate, compareDates, dateRange, decodeDate, encodeDate, formatDate, isBeforeBigBang, isUncertain, isValidDate, parseDate, precisionOf, spanYears, type FuzzyDate } from '../src/time/fuzzy';
+import { MAX_YEAR, partsOf, yearEnd, yearStart } from '../src/tool/dates';
+import { cleanDate, compareDates, dateRange, decodeDate, encodeDate, formatDate, isBeforeBigBang, isUncertain, isValidDate, parseDate, precisionOf, spanYears, type FuzzyDate } from '../src/tool/fuzzy';
 import { ENGINES, between, gregorian, kharan, meridian, random, selunnan } from './helpers/engines';
 
 describe('what a date covers', () => {

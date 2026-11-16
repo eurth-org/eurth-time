@@ -83,7 +83,7 @@ export interface LaidSpan {
   openEnd: boolean;
   /** Whether the span is still going on. */
   ongoing: boolean;
-  /** How many pixels at each end are uncertain ("c. 1640", "1650s"): drawn faded or dashed. 0 when the date is exact. */
+  /** How many pixels at each end are uncertain ("c. 1640", "1650s"): drawn hollow and dashed. 0 when the date is exact. */
   softStart: number;
   softEnd: number;
 }
@@ -264,7 +264,8 @@ export function layoutTimeline(timeline: Timeline, engine: DateEngine, view: Vie
     spans.forEach((span, i) => {
       const next = spans[i + 1];
       const free = (next !== undefined && next.row === span.row ? next.x : width) - (span.x + span.w) - 2 * o.labelGap;
-      const inside = span.w - 2 * o.barPad;
+      // The label goes on the certain part of the bar: the uncertain ends are drawn hollow.
+      const inside = span.w - span.softStart - span.softEnd - 2 * o.barPad;
       const needed = bold(span.label);
       if (needed <= inside) {
         span.place = 'inside';

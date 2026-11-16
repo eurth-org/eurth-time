@@ -8,8 +8,8 @@
  * "~1640" about 1640, "1830D" the 1830s, "301C" the 4th century, "5-i1-1" day 1 of the first
  * block of days outside the months.
  */
-import { normalizeTimeline } from '../time/normalize';
-import type { Timeline } from '../time/model';
+import { normalizeTimeline } from '../tool/normalize';
+import type { Timeline } from '../tool/model';
 import { KHARAN, SELUNNAN } from './calendars';
 
 export interface Example {

@@ -1,4 +1,4 @@
-import type { SvgTheme } from '../../src/time/svg';
+import type { SvgTheme } from '../../src/tool/svg';
 
 /** A theme for the tests only. The site takes its colours from @eurth/style's tokens. */
 export const TEST_THEME: SvgTheme = {

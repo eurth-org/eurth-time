@@ -140,11 +140,14 @@ export function countLine(timeline: Timeline): string {
   return list(parts);
 }
 
+/** A calendar's name as it reads in a sentence: "the Selunnan Reckoning", or "its own calendar" when it has none. */
+export const calendarName = (engine: DateEngine): string => (engine.name === '' ? 'its own calendar' : /^the /i.test(engine.name) ? engine.name : `the ${engine.name}`);
+
 /** The whole timeline, described. */
 export function describeTimeline(timeline: Timeline, engine: DateEngine): Description {
   const title = timeline.title === '' ? 'Untitled timeline' : timeline.title;
   const extent = extentOf(timeline, engine);
-  const calendar = engine.name === '' ? 'its own calendar' : /^the /i.test(engine.name) ? engine.name : `the ${engine.name}`;
+  const calendar = calendarName(engine);
   let summary: string;
   if (extent === null) {
     summary = timeline.tracks.length === 0 ? 'An empty timeline.' : `A timeline with ${plural(timeline.tracks.length, 'track')} and nothing on ${timeline.tracks.length === 1 ? 'it' : 'them'} yet.`;

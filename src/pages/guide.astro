@@ -1,0 +1,138 @@
+---
+// The guide: how to build a believable history, with sources and the day it was last brought
+// up to date. The words are data (src/content/guide.ts), so the tests can hold them to the
+// house rules; this page lays them out.
+import { article, ref, wikipedia } from '@eurth/style/build';
+import Page from '@eurth/style/components/Page.astro';
+import { site } from '../../eurth.config.mjs';
+import { CHECKLIST, DURATIONS, GUIDE_DESCRIPTION, GUIDE_LEAD, GUIDE_SECTIONS, GUIDE_TITLE, GUIDE_UPDATED, SOURCES } from '../content/guide';
+
+const updatedText = new Date(`${GUIDE_UPDATED}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const kinds = [...new Set(DURATIONS.map((row) => row.kind))];
+const sourceLink = (source: (typeof SOURCES)[number]) => (source.url ? ref(source.url, site.host) : source.wikipedia ? wikipedia(source.wikipedia, site.host) : null);
+---
+
+<Page
+  site={site}
+  title={GUIDE_TITLE}
+  description={GUIDE_DESCRIPTION}
+  crumbs={[{ name: 'Guide', path: '/guide/' }]}
+  jsonld={[article(site, { headline: GUIDE_TITLE, path: '/guide/', description: GUIDE_DESCRIPTION, updated: GUIDE_UPDATED })]}
+>
+  <article class="eu-prose">
+    <p class="eu-kicker">Guide</p>
+    <h1>{GUIDE_TITLE}</h1>
+    <p class="eu-lead">{GUIDE_LEAD}</p>
+
+    {
+      GUIDE_SECTIONS.map((section) => (
+        <>
+          <h2 id={section.id}>{section.heading}</h2>
+          {section.paragraphs.map((paragraph) => (
+            <p>{paragraph}</p>
+          ))}
+          {section.points && (
+            <ul>
+              {section.points.map((point) => (
+                <li>{point}</li>
+              ))}
+            </ul>
+          )}
+          {section.id === 'durations' && (
+            <div class="eu-scroll" tabindex="0" role="group" aria-label="How long things really take">
+              <table>
+                <caption>How long things really took. The numbers in brackets point to the sources below.</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">What</th>
+                    <th scope="col">How long</th>
+                    <th scope="col">Worth knowing</th>
+                  </tr>
+                </thead>
+                {kinds.map((kind) => (
+                  <tbody>
+                    <tr>
+                      <th scope="colgroup" colspan="3">
+                        {kind}
+                      </th>
+                    </tr>
+                    {DURATIONS.filter((row) => row.kind === kind).map((row) => (
+                      <tr>
+                        <th scope="row">{row.what}</th>
+                        <td class="eu-data">{row.took}</td>
+                        <td>
+                          {row.note}{' '}
+                          {row.sources.map((id) => (
+                            <a href={`#source-${id}`} aria-label={`Source ${SOURCES.findIndex((source) => source.id === id) + 1}`}>
+                              [{SOURCES.findIndex((source) => source.id === id) + 1}]
+                            </a>
+                          ))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
+              </table>
+            </div>
+          )}
+        </>
+      ))
+    }
+
+    <h2 id="checklist">Before you show it to anyone</h2>
+    <ul>
+      {CHECKLIST.map((question) => <li>{question}</li>)}
+    </ul>
+
+    <h2 id="try">Try it</h2>
+    <p>
+      Open the <a href="/">timeline</a> and start with one track and three events, or begin from one of the <a href="/examples/">examples</a>. The
+      <a href="/glossary/">glossary</a> explains the terms. When the history holds together, give it a world to belong to: <a href="https://eurth.org">Eurth</a> has one.
+    </p>
+
+    <h2 id="sources">Sources</h2>
+    <ol>
+      {
+        SOURCES.map((source) => {
+          const href = sourceLink(source);
+          return (
+            <li id={`source-${source.id}`}>
+              {source.citation} {href && <a href={href}>{source.url ? 'Open the site' : 'Read on Wikipedia'}<span class="eu-visually-hidden">: {source.wikipedia ?? source.citation}</span></a>}
+            </li>
+          );
+        })
+      }
+    </ol>
+    <p class="eu-muted">Last updated <time datetime={GUIDE_UPDATED}>{updatedText}</time>.</p>
+  </article>
+</Page>
+
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  caption {
+    padding-bottom: var(--space-2);
+    color: var(--ink-muted);
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-3) var(--space-2) 0;
+    border-bottom: 1px solid var(--line-strong);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  tbody tr:first-child th {
+    padding-top: var(--space-4);
+    font: var(--type-heading);
+  }
+
+  td.eu-data {
+    white-space: nowrap;
+  }
+</style>
