@@ -50,7 +50,7 @@
   import { cleanUrl } from './normalize';
   import { addEra, addEvent, addSpan, addTrack, appendTracks, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from './ops';
   import { readProfile, toProfileSection } from './profile';
-  import { timelineSvg } from './svg';
+  import { pictureName, timelineSvg } from './svg';
   import { TONES, svgTheme } from './theme';
   import { timelineWikitext } from './wikitext';
 
@@ -481,14 +481,17 @@
     download(picture().svg, `${slug}.svg`, 'image/svg+xml');
   }
 
-  /** The size of a PNG: the timeline's own shape, or one of the suite's sizes for sharing, with the timeline fitted inside. */
+  /** The size of a PNG or WebP: the timeline's own shape, or one of the suite's sizes for sharing, with the timeline fitted inside. */
   let pictureSize = $state('own');
 
-  async function savePng() {
+  async function savePicture(type: 'image/png' | 'image/webp') {
     const made = picture();
     const size = PICTURE_SIZES.find((one) => one.id === pictureSize);
     const box = size ?? { width: made.width * 2, height: made.height * 2 };
-    download(await svgToPicture(made.svg, { width: box.width, height: box.height, background: made.background }), `${slug}${size ? `-${size.id}` : ''}.png`);
+    const blob = await svgToPicture(made.svg, { width: box.width, height: box.height, background: made.background, type, quality: 0.92 });
+    // A browser that can't make a WebP hands back a PNG. Say so, and name the file for what it is.
+    if (type === 'image/webp' && blob.type !== 'image/webp') toast("This browser can't make a WebP, so here is a PNG.");
+    download(blob, pictureName(slug, size?.id, blob.type));
   }
 
   function saveCsv() {
@@ -730,11 +733,12 @@
       />
       <div class="eu-row">
         <button type="button" class="eu-btn" data-click="bounce" onclick={saveSvg}><Icon icon={faDownload} /> SVG</button>
-        <button type="button" class="eu-btn" data-click="bounce" onclick={savePng}><Icon icon={faDownload} /> PNG</button>
+        <button type="button" class="eu-btn" data-click="bounce" onclick={() => savePicture('image/png')}><Icon icon={faDownload} /> PNG</button>
+        <button type="button" class="eu-btn" data-click="bounce" onclick={() => savePicture('image/webp')}><Icon icon={faDownload} /> WebP</button>
         <label class="size">
-          <span class="eu-visually-hidden">Size of the PNG</span>
+          <span class="eu-visually-hidden">Size of the PNG or WebP</span>
           <select class="eu-select" bind:value={pictureSize}>
-            <option value="own">PNG as on screen</option>
+            <option value="own">Picture as on screen</option>
             {#each PICTURE_SIZES as size (size.id)}
               <option value={size.id}>{size.name}, {size.width} × {size.height}</option>
             {/each}

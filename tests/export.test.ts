@@ -11,7 +11,7 @@ import { extentOf } from '../src/tool/layout';
 import { timelineFromLink } from '../src/tool/link';
 import { countItems, emptyTimeline, titleOf } from '../src/tool/model';
 import { normalizeTimeline } from '../src/tool/normalize';
-import { escapeXml, fileSlug, timelineSvg } from '../src/tool/svg';
+import { escapeXml, fileSlug, pictureName, timelineSvg } from '../src/tool/svg';
 import { timelineWikitext, wikiLink, wikiText } from '../src/tool/wikitext';
 import { between, gregorian, random } from './helpers/engines';
 import { TEST_THEME, readCsv, readXml } from './helpers/theme';
@@ -148,6 +148,12 @@ describe('the picture', () => {
     expect(fileSlug('')).toBe('timeline');
     expect(fileSlug('???', 'export')).toBe('export');
     expect(fileSlug('../../etc/passwd')).toBe('etc-passwd');
+    // A picture is named for what the browser really made.
+    expect(pictureName('khara', undefined, 'image/png')).toBe('khara.png');
+    expect(pictureName('khara', 'square', 'image/webp')).toBe('khara-square.webp');
+    expect(pictureName('khara', '', 'image/webp')).toBe('khara.webp');
+    expect(pictureName('khara', 'story', 'image/png')).toBe('khara-story.png');
+    expect(pictureName('khara', undefined, '')).toBe('khara.png');
   });
 });
 

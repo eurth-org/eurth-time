@@ -181,6 +181,17 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
   return { svg: out.filter((part) => part !== '').join(''), width, height };
 }
 
+/**
+ * The name of a downloaded picture, from what the browser really made. Asked for WebP, a
+ * browser that can't make one hands back a PNG; the name must say PNG then.
+ * @param size the id of one of the suite's sharing sizes, or nothing for the picture's own shape
+ * @param made the type of the picture as made: "image/webp", "image/png"
+ */
+export function pictureName(slug: string, size: string | undefined, made: string): string {
+  const ending = made === 'image/webp' ? 'webp' : 'png';
+  return `${slug}${size === undefined || size === '' ? '' : `-${size}`}.${ending}`;
+}
+
 /** A file name for an export: "history-of-the-oriental-coast". Plain letters, digits and hyphens. */
 export function fileSlug(title: string, fallback = 'timeline'): string {
   const slug = title
