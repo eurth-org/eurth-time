@@ -6,7 +6,7 @@ Three parts: what comes next, what each release added (newest first), and what's
 
 ## Where to pick up
 
-**The tool is built and passes every check that runs on a developer's machine. It waits for its door: 17 December 2026, 00:00 in Brussels.** What is left is under "Before the door" below; none of it is building.
+**The tool is built and CI is green on `main`: types, build, tests, axe, the smoke test in a real browser, and Lighthouse. It waits for its door: 17 December 2026, 00:00 in Brussels.** What is left is under "Before the door" below; none of it is building.
 
 Before any change: `npm install`, then `npm run check`, `npm run build`, `npm test` and `npm run axe`. All four must pass before and after. Astro wants a newer Node than 22.14: put Homebrew's `node@26` first on `PATH` if the default is older (`export PATH="/opt/homebrew/opt/node@26/bin:$PATH"`). `HANDBOOK.md` in `node_modules/@eurth/style/` wins over anything here.
 
@@ -29,7 +29,6 @@ Where things are:
 - **A bare page for embeds, in `@eurth/style`.** The handbook's checks ask every page for the shared shell, so the embed page (`/embed/?t=…`) carries the header and footer inside its frame. It works and it is honest, but a timeline in a forum post wants less. The handbook is silent on embeds, so this is a request to `@eurth/style` (a `Page` without the shell, still under the same headers), not something to work around here.
 - **Try it with the real calendar maker,** once that site exists: its "Use in a timeline" link should open `time.eurth.org/?cal=…`, and Time should show an empty timeline in that calendar. The reading side is tested against the package's own packed form.
 - **Hands and ears.** Pinch to zoom on a real phone, and a pass with a screen reader over the chart's listbox. Both are built to the standards and checked by axe; neither has been tried on a device.
-- **Lighthouse** runs in CI on `main`; look at its numbers after a green run and fix what it finds.
 - **The launch** is `.github/workflows/launch.yml`: it starts at 22:30 UTC on 16 December 2026, builds for the door's time, waits for `LAUNCH_AT` and deploys. If it hasn't started by 22:45 UTC, start it by hand. Afterwards: delete that file, submit the sitemap, and tell the forum.
 
 ### Later
@@ -63,7 +62,7 @@ The first version, not yet live.
 - **The easter egg:** date something before the Big Bang.
 - **Pages:** Timeline, Examples (three invented histories in three calendars: Gregorian, the Selunnan Reckoning and the Kharan Long Year), Guide (how to build a believable history: causes and consequences, parallel tracks, three speeds of time, how long things really take, with a source for every figure) and Glossary (31 terms).
 - **The suite's kit,** from `@eurth/style` 1.0.1 and its starter: Astro pages with the tool as a Svelte island, the shared header and footer, security headers, service worker, manifest, sitemap, and the workflows for CI, the nightly rebuild and the launch.
-- **Checked:** 249 tests (dates round-trip in five calendars, hostile links and files, the layout at any zoom, every export, the built pages, the profile against the real `@eurth/profile`), the suite's shared checks (contrast, headers, privacy, no spoilers, pages, launch date), and axe on every page in both themes with no findings.
+- **Checked:** 249 tests (dates round-trip in five calendars, hostile links and files, the layout at any zoom, every export, the built pages, the profile against the real `@eurth/profile`), the suite's shared checks (contrast, headers, privacy, no spoilers, pages, launch date), axe on every page in both themes with no findings, and Lighthouse within the suite's limits in CI.
 
 ## 14 November 2026: groundwork (no release)
 
