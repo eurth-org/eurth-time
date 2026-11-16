@@ -29,7 +29,7 @@
   } from '@fortawesome/free-solid-svg-icons';
   import { createProfile, getSection, setSection, type EurthProfile } from '@eurth/profile';
   import ProfileButtons from '@eurth/profile/ProfileButtons.svelte';
-  import { calm, copyText, download, fileSlug, getPrefs, resolveColors, svgToPicture, toast } from '@eurth/style';
+  import { PICTURE_SIZES, calm, copyText, download, fileSlug, getPrefs, resolveColors, svgToPicture, toast } from '@eurth/style';
   import Icon from '@eurth/style/components/Icon.svelte';
   import ShareButtons from '@eurth/style/components/ShareButtons.svelte';
   import tokens from '@eurth/style/tokens.json';
@@ -481,9 +481,14 @@
     download(picture().svg, `${slug}.svg`, 'image/svg+xml');
   }
 
+  /** The size of a PNG: the timeline's own shape, or one of the suite's sizes for sharing, with the timeline fitted inside. */
+  let pictureSize = $state('own');
+
   async function savePng() {
     const made = picture();
-    download(await svgToPicture(made.svg, { width: made.width * 2, height: made.height * 2, background: made.background }), `${slug}.png`);
+    const size = PICTURE_SIZES.find((one) => one.id === pictureSize);
+    const box = size ?? { width: made.width * 2, height: made.height * 2 };
+    download(await svgToPicture(made.svg, { width: box.width, height: box.height, background: made.background }), `${slug}${size ? `-${size.id}` : ''}.png`);
   }
 
   function saveCsv() {
@@ -726,6 +731,15 @@
       <div class="eu-row">
         <button type="button" class="eu-btn" data-click="bounce" onclick={saveSvg}><Icon icon={faDownload} /> SVG</button>
         <button type="button" class="eu-btn" data-click="bounce" onclick={savePng}><Icon icon={faDownload} /> PNG</button>
+        <label class="size">
+          <span class="eu-visually-hidden">Size of the PNG</span>
+          <select class="eu-select" bind:value={pictureSize}>
+            <option value="own">PNG as on screen</option>
+            {#each PICTURE_SIZES as size (size.id)}
+              <option value={size.id}>{size.name}, {size.width} × {size.height}</option>
+            {/each}
+          </select>
+        </label>
         <button type="button" class="eu-btn" data-click="bounce" onclick={saveCsv}><Icon icon={faDownload} /> CSV</button>
         <button type="button" class="eu-btn" onclick={copyWiki}><Icon icon={faTable} /> Copy wiki table</button>
         <button type="button" class="eu-btn" onclick={copyEmbed}><Icon icon={faCode} /> Copy embed code</button>

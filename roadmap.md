@@ -6,76 +6,70 @@ Three parts: what comes next, what each release added (newest first), and what's
 
 ## Where to pick up
 
-**Now: the site is built (step 5) and passes every check that runs on this machine. What is left is in "Before the door" below.** Stijn agreed to the plan on 14 November 2026.
+**The tool is built and passes every check that runs on a developer's machine. It waits for its door: 17 December 2026, 00:00 in Brussels.** What is left is under "Before the door" below; none of it is building.
 
-Run `npm install`, then `npm run check`, `npm run build`, `npm test` and `npm run axe`: all four must pass before and after every change. Astro wants a newer Node than 22.14: put Homebrew's `node@26` first on `PATH` if the default is older.
+Before any change: `npm install`, then `npm run check`, `npm run build`, `npm test` and `npm run axe`. All four must pass before and after. Astro wants a newer Node than 22.14: put Homebrew's `node@26` first on `PATH` if the default is older (`export PATH="/opt/homebrew/opt/node@26/bin:$PATH"`). `HANDBOOK.md` in `node_modules/@eurth/style/` wins over anything here.
 
-Check these two before each working session, because they decide what may be built:
+Where things are:
 
-| Gate | How to check | State late on 14 November 2026 |
-| --- | --- | --- |
-| `@eurth/calendar` 1.0.0 | `gh release list -R eurth-org/eurth-calendar` | **Released** (`v1.0.0`). Step 4h can go ahead. |
-| `@eurth/style` 1.0.0 | `gh release list -R eurth-org/eurth-style` | **Released** (`v1.0.0`, then `v1.0.1`), with `HANDBOOK.md` and the starter template. Step 5 can go ahead. |
+- `src/tool/`: the timeline's logic as plain TypeScript (no DOM), and the two Svelte components that draw it, `Timeline.svelte` and `Chart.svelte`. `engine.ts` is the only file that imports `@eurth/calendar`.
+- `src/content/`: the guide, the glossary and the three examples, as data.
+- `src/pages/`: Timeline, Examples, Guide, Glossary, the embed page and the 404 page.
+- `tests/`: the logic, the words, the exports, the built pages, and the suite's shared checks (`shell.test.js`).
 
 ## Next
 
-### Step 4: the core, as plain TypeScript with tests (no site)
+### Before the door
 
-Everything lives in `src/tool/` (it began as `src/time/` and moved when the site was started from the starter template) and `src/content/`, tested with Vitest in `tests/`. No Astro, Svelte or `@eurth/style` in this step. Commit and push after each letter, and tick it off here.
-
-- [x] **4a. Skeleton and dates.** `package.json` (TypeScript and Vitest only, Node 22), `tsconfig.json`, `vitest.config.ts`, `LICENSE` (Apache 2.0), `docs/feedback-log.md`, CI that checks and tests.
-  - `dates.ts`: the small interface the rest of the tool sees, `DateEngine`: day number of a date and back, the start and length of a year, the parts of a year (months and days outside the months), year labels ("1022 FS", "3 Before the Founding"). A day number is a whole number, 0 for day 1 of year 1, the same count `@eurth/calendar` uses, so its `Calendar` drops in behind the interface without touching anything else.
-  - `engine.ts` holds the interface and `engineFor(calendar)`, the one place that knows the package. Without a calendar it is Gregorian.
-  - Deep time: beyond the engine's range (the calendar engine stops at ten million years either way) a date is a year only, placed by the mean length of the year. That is what lets someone date an event before the Big Bang.
-  - `fuzzy.ts`: dates as a person writes them. Exact to the day, the month or the year; "c. 1650"; "1650s"; "17th century". Each becomes a first day, a last day and a way to write it back. Parsing and formatting both ways, tested against all three example calendars.
-- [x] **4b. The model.** `model.ts`: a timeline is a title, a calendar (or none, meaning Gregorian), eras, and tracks; a track has spans (label, from, to or "ongoing", text, links, a tone) and events (title, date, text, links). `normalize.ts` cleans anything that arrives from a link or a file: caps on counts and lengths, https links only, dates that don't exist put right or dropped, with a list of what was changed. Never throws. Add, edit, move and remove as pure functions that give back a new timeline (`ops.ts`), so undo is a list of timelines (`history.ts`).
-- [x] **4c. The axis and the layout.** `axis.ts`: a view is a first day, a last day and a width. Tick levels from a thousand million years down to days; which levels show at a zoom, and how visible each label is (0 to 1, by the space between ticks). That number is the signature touch: labels fade in and out as you zoom, like place names on a map. Zoom about a point, pan, fit to the content, clamp. `layout.ts`: spans that overlap in a track go on rows of their own; event labels that would collide give way by date order, the marker always stays; eras across the top. Pure numbers out, no DOM.
-- [x] **4d. Words and keys.** `describe.ts`: the whole timeline as text: a summary line, the eras, then each track with its spans and events in date order. One source for the screen-reader version, the search-engine version and "Copy description". `nav.ts`: the order the keyboard walks: next and previous in time, up and down a track, first and last, and which card is open.
-- [x] **4e. Saving.** `link.ts`: the timeline packed into `?t=1.<base64url>` (short keys, lists, nothing at its default), with the calendar beside it as `?cal=`, the same text cal.eurth.org's "Use in a timeline" link carries. A timeline too long for a link (over 8,000 characters) says so and points to the profile file. `profile.ts`: the `timeline` section of the profile: the schema's own fields as a digest any tool can quote (`title`, `startYear`, `endYear`, up to 200 `events`), and the whole timeline under `definition`, the way Calendar keeps its whole calendar. Reads `calendar` (through `@eurth/calendar`'s own reader once released) and `dynasty`.
-- [x] **4f. Exports.** `svg.ts`: the visible range as a standalone SVG (colours handed in, so the site passes the style tokens with `resolveColors`, as the handbook asks; every span carries its label; the description inside as `<title>` and `<desc>`). PNG is that SVG drawn to a canvas in the site. `wikitext.ts`: a sortable wikitable for a history section. `csv.ts`: one row per era, span and event. `embed.ts`: the iframe snippet for eurth.org.
-- [x] **4g. Content.** `src/content/guide.ts`: how to build a believable history: causes and consequences, parallel tracks, how long things really take (reigns, wars, dynasties, building a cathedral, crossing an ocean), with sources and a last-updated date. `glossary.ts`: some 30 terms (era, epoch, regnal year, interregnum, circa, floruit, terminus post quem, anachronism and so on). `examples.ts`: three timelines in three calendars: Gregorian, one of Calendar's invented presets with an Earth link, and one with days outside the months and no link to Earth. Tests render and export all three.
-- [x] **4h. Plug in the engine.** `@eurth/calendar` 1.0.0 is installed from GitHub (`github:eurth-org/eurth-calendar#semver:^1`) and sits behind `DateEngine` in `engine.ts`, the only file that imports it. Calendars in `?cal=` use the package's packed form; `src/content/calendars.ts` re-exports its presets. The stand-in engine is gone: the whole suite passed against the package unchanged.
-
-### Step 5: the site (only after `@eurth/style` 1.0.0)
-
-Start from the starter template in eurth-style and read `HANDBOOK.md` first; it wins over this plan.
-
-- **Pages:** Timeline (the tool), Guide, Glossary, Examples, and a bare `/embed/` page for the iframe.
-- **The timeline:** eras across the top, tracks with their names down the left, the year axis below, as on the mock-up. Drag to pan, wheel or pinch to zoom, plus and minus buttons. Uncertain dates are drawn as such (a dashed end, "c." in the label) and said as such.
-- **The card:** select an event or span to see its title, date, text and links (forum thread, wiki page). Edit in the same place.
-- **Keyboard:** arrow keys between events and tracks, plus and minus to zoom, Enter to open the card, Escape to close it. Targets 44 by 44 pixels.
-- **The text version** of the whole timeline on the page, from `describe.ts`: for screen readers and for search engines.
-- **Calendar:** from a profile, from a `?cal=` link, or Gregorian. A line under the title says which ("dates from cal.eurth.org").
-- **Saving:** Copy link for short timelines; Load profile and Save profile for any.
-- **Exports:** PNG and SVG of the visible range, wikitext, CSV, the embed snippet, Copy description, and the handbook's share dialog.
-- **Delight:** the fading axis labels; "Ambitious." for an event dated before the Big Bang.
-- **The handbook's checklist:** contrast, axe, Lighthouse, headers, offline, install, launch workflow for door 8 (17 December 2026, 00:00 Europe/Brussels), README, and Time's entry in `tools.json` (already there).
-- **Done when** the checklist passes and timelines in three different calendars render and export correctly.
-
-### Questions for Stijn
-
-None of these block step 4; each has a default that I'll follow unless told otherwise.
-
-1. **Dynasty reigns.** The brief says reigns can become spans, but the profile's `dynasty` section holds only the house, the law, the monarch, the heir and the line of succession: no dates. Default: Time reads a `reigns` list from the section if Dynasty writes one (name, from, to, as years or calendar dates), and offers nothing when it isn't there. A note for the Dynasty session is in the shared notes folder.
-2. **The whole timeline in the profile.** The profile's roadmap rules out "a tool's whole design in the profile", yet this brief wants any timeline saved there, since a long one can't fit a link. Default: do as Calendar does and keep the whole thing under `timeline.definition`, with the schema's small fields as a digest. The schema already keeps unknown keys, so nothing in eurth-profile has to change.
-3. **"Collaborators can add their nation as a track"** is on the mock-up but not in the brief. With no accounts, that can only mean: load a second link or profile and add its tracks to yours. Default: after v1 (it's under "Later").
-4. **Page name.** The mock-up's menu says "Maker"; the brief says "Timeline". Default: Timeline.
+- **Stijn's word on four defaults.** Each is in place and works; each is his to overrule.
+  1. *Dynasty reigns.* The brief says reigns can become spans, but the profile's `dynasty` section holds no dates. Time reads a `reigns` list from that section when Dynasty writes one (a name, `from`, and `to` unless still reigning; years, compact dates or dates in words), and offers "Add the reigns of…" when it finds one. Until Dynasty writes it, nothing shows. The shape asked for is in the shared notes of the sessions that built the tools.
+  2. *The whole timeline in the profile.* The handbook says a section is small and is not a tool's whole state; the brief says any timeline can be saved in the profile, since a long one can't fit a link. Time follows the brief the way Calendar does: the schema's own small fields as a digest, and the whole timeline under `timeline.definition`. The schema keeps unknown keys, so nothing had to change in `@eurth/profile`.
+  3. *"Collaborators can add their nation as a track"* is on the mock-up and not in the brief. With no accounts it can only mean loading a second link or profile and taking its tracks: under "Later".
+  4. *The page's name.* The mock-up's menu says "Maker", the brief says "Timeline". It is "Timeline".
+- **A bare page for embeds, in `@eurth/style`.** The handbook's checks ask every page for the shared shell, so the embed page (`/embed/?t=…`) carries the header and footer inside its frame. It works and it is honest, but a timeline in a forum post wants less. The handbook is silent on embeds, so this is a request to `@eurth/style` (a `Page` without the shell, still under the same headers), not something to work around here.
+- **Try it with the real calendar maker,** once that site exists: its "Use in a timeline" link should open `time.eurth.org/?cal=…`, and Time should show an empty timeline in that calendar. The reading side is tested against the package's own packed form.
+- **Hands and ears.** Pinch to zoom on a real phone, and a pass with a screen reader over the chart's listbox. Both are built to the standards and checked by axe; neither has been tried on a device.
+- **Lighthouse** runs in CI on `main`; look at its numbers after a green run and fix what it finds.
+- **The launch** is `.github/workflows/launch.yml`: it starts at 22:30 UTC on 16 December 2026, builds for the door's time, waits for `LAUNCH_AT` and deploys. If it hasn't started by 22:45 UTC, start it by hand. Afterwards: delete that file, submit the sitemap, and tell the forum.
 
 ### Later
 
 - **Add tracks from someone else's timeline:** load a second link or profile and take its tracks, which is how a shared world's history gets built without accounts.
+- **A reality check,** as Flagwright checks a flag: reigns of ninety years, a cathedral built in a summer, news that crosses an ocean in a day. The guide's table of how long things take is already data (`src/content/guide.ts`).
 - **A second calendar on the same axis,** so two nations can each read the timeline in their own reckoning.
 - **Group and collapse tracks** (a continent, an alliance).
+- **Drag an event or the end of a span** to change its date, with the keyboard doing the same.
 - **Print:** a timeline across several pages, as a PDF made in the browser.
 - **Pictures on cards** (a link to an image, shown in an `<img>`).
 - **Import from CSV,** the same columns the export writes.
+- **WebP** beside PNG for the picture.
 - **A link preview picture per timeline** (a Worker would draw it).
 
-## 14 November 2026: groundwork (no release yet)
+## 16 November 2026: 0.1.0, built and waiting for its door
+
+The first version, not yet live.
+
+- **The timeline.** Tracks for a nation, a dynasty, the shared world or anything else, each with spans (a reign, a war, the life of a state; "still going on" is allowed) and events (a single date). Eras across the top. A year axis that zooms from thousands of millions of years down to single days.
+- **Dates in the world's own calendar,** through `@eurth/calendar` 1.0.0: its months, its days outside the months, its eras on both sides of year 1. A calendar arrives in a profile or in a `?cal=` link; without one, the Gregorian calendar. Dates are typed as they are written ("17 Harvestmoon 1022 FS", "44 BCE", "1022-09-17"), and a date that doesn't exist gets a plain explanation with examples that do.
+- **Uncertain dates, shown as such:** "c. 1650", "1650s", "17th century". A loose event has a hollow marker and a bracket as wide as its date; a loose end of a span is hollow and dashed; and every place a date is written says "c.".
+- **Deep time.** Past the ten million years the calendar engine counts day by day, Time counts in whole years, as far as a hundred thousand million either way.
+- **The card.** Choose an event or a span to see its title, date, text and links, and to change them: label, dates, track, text, tone and up to four https links. Undo and redo, for the visit.
+- **Keyboard.** The chart is a list to choose from: left and right along a track, up and down to the nearest thing in time on the next, Page Up and Down through everything, Enter to open the card, Escape to close it, plus and minus to zoom, nought to show all, Shift with the arrows to slide.
+- **The timeline in words,** on the page: a summary, then every era, span and event in the order things happened, each with a full-size button that selects it on the chart. It is what a screen reader reads, what a search engine reads, and what "Copy description" copies.
+- **Never colour alone.** Every span carries its label on the bar or beside it; tones are a help to the eye, named in words in the picker, and drawn from the suite's text colours so that a label on a bar meets the same 7:1 as text on the page, in both themes.
+- **Saving.** A short timeline lives in its link (`?t=1.…`, with its calendar in `?cal=`). Any timeline saves in the nation's profile file, in the `timeline` section: a digest any tool can quote, and the whole timeline. Time reads `calendar` and `dynasty` and writes neither.
+- **Exports.** SVG and PNG of the visible range in the theme on screen (PNG also in the suite's six sharing sizes), a sortable wiki table for a history section, CSV, an iframe to embed on eurth.org, Copy description, Copy picture and the suite's share dialog.
+- **The signature touch:** axis labels fade in as they find room and out as they lose it, like place names on a map; at rest a label is wholly there or wholly gone, so it always reads. The steps between labelled years nest (1, 5, 10, 50…), so zooming in only ever adds labels.
+- **The easter egg:** date something before the Big Bang.
+- **Pages:** Timeline, Examples (three invented histories in three calendars: Gregorian, the Selunnan Reckoning and the Kharan Long Year), Guide (how to build a believable history: causes and consequences, parallel tracks, three speeds of time, how long things really take, with a source for every figure) and Glossary (31 terms).
+- **The suite's kit,** from `@eurth/style` 1.0.1 and its starter: Astro pages with the tool as a Svelte island, the shared header and footer, security headers, service worker, manifest, sitemap, and the workflows for CI, the nightly rebuild and the launch.
+- **Checked:** 249 tests (dates round-trip in five calendars, hostile links and files, the layout at any zoom, every export, the built pages, the profile against the real `@eurth/profile`), the suite's shared checks (contrast, headers, privacy, no spoilers, pages, launch date), and axe on every page in both themes with no findings.
+
+## 14 November 2026: groundwork (no release)
 
 - The brief saved as `CLAUDE.md`; the public repository eurth-org/eurth-time created.
-- Read the sibling projects as they stood that evening: eurth-style (its brief, tokens, `tools.json` and starter template; no `HANDBOOK.md` and no release yet), eurth-profile (schema 1, with its `timeline`, `calendar` and `dynasty` sections), eurth-calendar (the engine's types and API, still unreleased), eurth-flag (the reference build) and the mock-up board.
-- This plan.
+- Read the sibling projects as they stood that evening (eurth-style, eurth-profile, eurth-calendar, eurth-flag and the mock-up board) and wrote the plan, which Stijn agreed to.
+- The core, as plain TypeScript with tests and no site: dates behind a small interface, with a stand-in engine until `@eurth/calendar` was released later that night; the model; the axis and the layout; the words; saving; the exports; the guide, glossary and examples.
 
 ## Not planned
 
@@ -85,4 +79,5 @@ None of these block step 4; each has a default that I'll follow unless told othe
 - **Real-world history as ready-made data.** The examples are invented. Plenty of sites chart Earth's history; this one is for worlds that don't exist.
 - **AI-written histories.** The guide teaches how to write one; the tool doesn't write it for you.
 - **Converting between two invented calendars that share no link to Earth.** There is nothing to convert through.
+- **A compressed link.** Packing a longer timeline into a link would need the browser's stream compression, which makes reading a link a wait; a long timeline belongs in the profile file.
 - **Trackers and analytics.**
