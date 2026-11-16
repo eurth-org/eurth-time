@@ -42,6 +42,24 @@ describe.skipIf(!built)('the timeline page, before any script runs', () => {
     expect(html).toContain('aria-label="Kingdom of Ostaril · House Varenko, since c. 1640 CE"');
   });
 
+  it('shows nothing on a bar or an era that is not part of the name read out for it', () => {
+    // A label cut short in the page itself ("Modern…") is seen but not said. Labels are cut by the stylesheet instead.
+    const html = page('');
+    const options = [...html.matchAll(/<div role="option"[^>]*aria-label="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g)];
+    expect(options.length).toBeGreaterThan(20);
+    for (const [, name, inside] of options) {
+      const seen = text(inside!).trim();
+      expect(seen).not.toContain('…');
+      if (seen !== '') expect(text(name!), seen).toContain(seen);
+    }
+  });
+
+  it('leaves no empty piece of text for the page to trip over when it wakes up', () => {
+    // An event with no duration and no text has only its date after its name.
+    const html = page('');
+    expect(html).toMatch(/>Every adult gets the vote<\/button>\s*<span[^>]*><span[^>]*>1923 CE<\/span><!--/);
+  });
+
   it('has the whole timeline as words, with a button for every thing', () => {
     const words = text(page(''));
     expect(words).toContain(describeTimeline(start, engineFor(start.calendar)).summary);

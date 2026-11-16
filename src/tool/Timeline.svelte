@@ -1062,7 +1062,8 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
         {#each description.eras as era (era.ref.index)}
           <li>
             <button type="button" class="eu-btn eu-btn--quiet" aria-pressed={sameRef(selected, era.ref)} onclick={() => show(era.ref)}>{era.title}</button>
-            <span><span class="eu-data">{era.when}</span>{era.duration === '' ? '' : ` (${era.duration})`}</span>
+            <!-- Each part is there or it is not: a piece of text that may be empty is something the page can't pick up again from the server's HTML. -->
+            <span><span class="eu-data">{era.when}</span>{#if era.duration !== ''}<span>{` (${era.duration})`}</span>{/if}</span>
           </li>
         {/each}
       </ul>
@@ -1076,7 +1077,7 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
           {#each one.items as item (`${item.kind}${item.ref.index}`)}
             <li>
               <button type="button" class="eu-btn eu-btn--quiet" aria-pressed={sameRef(selected, item.ref)} onclick={() => show(item.ref)}>{item.title}</button>
-              <span><span class="eu-data">{item.when}</span>{item.duration === '' ? '' : ` (${item.duration})`}{item.text === '' ? '' : `. ${item.text}`}</span>
+              <span><span class="eu-data">{item.when}</span>{#if item.duration !== ''}<span>{` (${item.duration})`}</span>{/if}{#if item.text !== ''}<span>{`. ${item.text}`}</span>{/if}</span>
             </li>
           {/each}
         </ul>

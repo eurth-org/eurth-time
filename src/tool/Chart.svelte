@@ -325,7 +325,8 @@
             style:height="{era.h}px"
             onclick={() => pick(era.ref)}
           >
-            <span class="era-label" aria-hidden="true">{era.text}</span>
+            <!-- The whole label is in the page and the stylesheet cuts it to fit: what is seen is then always part of the name read out. -->
+            {#if era.text !== ''}<span class="era-label" aria-hidden="true">{era.label}</span>{/if}
             {#if !readonly && sameRef(selected, era.ref)}
               {#if !era.openStart}<span class="handle start" data-part="from" aria-hidden="true"></span>{/if}
               {#if !era.openEnd}<span class="handle end" data-part="to" aria-hidden="true"></span>{/if}
@@ -355,7 +356,7 @@
           >
             {#if span.softStart > 0 || span.softEnd > 0}<span class="soft" aria-hidden="true"></span>{/if}
             <span class="solid" class:cut={span.softStart > 0 || span.softEnd > 0} aria-hidden="true" style:left="{span.softStart}px" style:right="{span.softEnd}px"></span>
-            {#if span.place === 'inside'}<span class="bar-label" aria-hidden="true" style:left="{span.softStart + barPad}px">{span.text}</span>{/if}
+            {#if span.place === 'inside'}<span class="bar-label" aria-hidden="true" style:left="{span.softStart + barPad}px" style:right="{span.softEnd + barPad}px"><span class="cut">{span.label}</span></span>{/if}
             {#if span.ongoing && span.w >= 32}<span class="going" aria-hidden="true"></span>{/if}
             {#if !readonly && sameRef(selected, span.ref) && span.w >= 32}
               {#if !span.openStart}<span class="handle start" data-part="from" aria-hidden="true"></span>{/if}
@@ -595,9 +596,13 @@
   }
 
   .era-label {
-    padding-left: var(--space-3);
+    box-sizing: border-box;
+    max-width: 100%;
+    padding: 0 var(--space-3);
+    overflow: hidden;
     color: var(--ink-muted);
     font: var(--type-kicker);
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
@@ -659,6 +664,12 @@
     color: var(--surface);
     font: var(--type-kicker);
     white-space: nowrap;
+  }
+
+  .cut {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Still going on: an arrowhead at the end of the bar. */
