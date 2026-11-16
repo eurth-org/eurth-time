@@ -11,6 +11,7 @@ import type { DateEngine } from './engine';
 import { dateRange, formatDate, isUncertain, precisionOf, type FuzzyDate } from './fuzzy';
 import { extentOf } from './layout';
 import { countItems, type Era, type Link, type Ref, type Span, type TimeEvent, type Timeline, type TrackKind } from './model';
+import { pictureWords } from './picture';
 
 /** One era, span or event, in words. */
 export interface DescribedItem {
@@ -23,6 +24,8 @@ export interface DescribedItem {
   duration: string;
   text: string;
   links: Link[];
+  /** What its picture shows, in words. Empty when it has none, or only a decorative one. */
+  picture: string;
   /** The first day it covers, for sorting. */
   first: number;
 }
@@ -106,12 +109,13 @@ function describeStretch(engine: DateEngine, ref: Ref, item: Era | Span): Descri
     duration: stretchDuration(engine, item.from, item.to),
     text: 'text' in item ? item.text : '',
     links: 'links' in item ? item.links : [],
+    picture: 'picture' in item ? pictureWords(item.picture) : '',
     first: dateRange(engine, item.from).first,
   };
 }
 
 function describeEvent(engine: DateEngine, ref: Ref, event: TimeEvent): DescribedItem {
-  return { ref, kind: 'event', when: formatDate(engine, event.date), title: event.title, duration: '', text: event.text, links: event.links, first: dateRange(engine, event.date).first };
+  return { ref, kind: 'event', when: formatDate(engine, event.date), title: event.title, duration: '', text: event.text, links: event.links, picture: pictureWords(event.picture), first: dateRange(engine, event.date).first };
 }
 
 /** One era, span or event in words, for its card. Null when there is no such thing. */
@@ -181,8 +185,10 @@ export function describeTimeline(timeline: Timeline, engine: DateEngine): Descri
 /** One item as a line: "1622 to 1870 CE: House Delmaris (248 years). Merchant-princes who…" */
 export function itemLine(item: DescribedItem): string {
   const head = `${item.when}: ${item.title}${item.duration === '' ? '' : ` (${item.duration})`}`;
-  if (item.text === '') return head;
-  return `${head}${/[.!?…]$/.test(head) ? '' : '.'} ${item.text}`;
+  const closed = (words: string) => `${words}${/[.!?…]$/.test(words) ? '' : '.'}`;
+  // A picture is there in words: what it shows, as its description says.
+  const parts = [item.text, item.picture === '' ? '' : closed(`Picture: ${item.picture}`)].filter((part) => part !== '');
+  return parts.length === 0 ? head : `${closed(head)} ${parts.join(' ')}`;
 }
 
 /** The whole description as plain text, for "Copy description". */

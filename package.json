@@ -1,7 +1,7 @@
 {
   "name": "eurth-time",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Time: history timelines for fictional worlds, dated in the world's own calendar. For time.eurth.org.",
   "license": "Apache-2.0",

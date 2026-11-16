@@ -8,6 +8,7 @@
  */
 import type { CalendarData } from './engine';
 import type { FuzzyDate } from './fuzzy';
+import type { Picture } from './picture';
 
 /** The version of this format. */
 export const TIMELINE_VERSION = 1;
@@ -54,6 +55,8 @@ export interface TimeEvent {
   date: FuzzyDate;
   text: string;
   links: Link[];
+  /** A picture for the card, carried in the timeline's own data; null for none. See picture.ts. */
+  picture: Picture | null;
 }
 
 /** A stretch of time on a track: a reign, a war, the life of a state. */
@@ -65,6 +68,8 @@ export interface Span {
   to: FuzzyDate | null;
   text: string;
   links: Link[];
+  /** A picture for the card, carried in the timeline's own data; null for none. See picture.ts. */
+  picture: Picture | null;
   /** 0 to LIMITS.tones - 1. */
   tone: number;
 }
@@ -132,6 +137,14 @@ export function getItem(timeline: Timeline, ref: Ref): Era | Span | TimeEvent | 
   if (track === undefined) return null;
   return (ref.kind === 'span' ? track.spans[ref.index] : track.events[ref.index]) ?? null;
 }
+
+/** Every span and event that has a picture, in the order of the tracks. */
+export function picturesOf(timeline: Timeline): (Span | TimeEvent)[] {
+  return timeline.tracks.flatMap((track) => [...track.spans, ...track.events]).filter((item) => item.picture !== null);
+}
+
+/** Whether a timeline carries any picture. One that does can't ride in a link: see link.ts. */
+export const hasPictures = (timeline: Timeline): boolean => timeline.tracks.some((track) => track.spans.some((span) => span.picture !== null) || track.events.some((event) => event.picture !== null));
 
 /** Whether two refs point at the same thing. */
 export function sameRef(a: Ref | null, b: Ref | null): boolean {

@@ -6,6 +6,7 @@
  */
 import { canConvert, cleanCalendar, engineFor, sameCalendar, type CalendarData, type DateEngine } from './engine';
 import { cleanDate, dateRange, type FuzzyDate } from './fuzzy';
+import { PICTURE_LIMITS, cleanPicture, type Picture } from './picture';
 import { LIMITS, TIMELINE_VERSION, TRACK_KINDS, type Era, type Link, type Span, type TimeEvent, type Timeline, type Track, type TrackKind } from './model';
 
 /** Something that had to be put right, in words for the person. */
@@ -51,6 +52,36 @@ function cleanLinks(value: unknown, path: string, issues: Issue[]): Link[] {
   });
   if (value.length > LIMITS.links) issues.push({ path, message: `A card holds at most ${LIMITS.links} links; the rest were left out.` });
   return links;
+}
+
+/** How many pictures a timeline has taken so far, and how long they are together. */
+interface PictureRoom {
+  count: number;
+  total: number;
+  full: boolean;
+}
+
+/** A picture, checked, and only while the timeline has room for one more. Anything turned away is said. */
+function readPicture(value: unknown, path: string, issues: Issue[], room: PictureRoom): Picture | null {
+  if (value === null || value === undefined) return null;
+  const { picture, problem } = cleanPicture(value);
+  if (picture === null) {
+    issues.push({
+      path,
+      message:
+        problem === 'no-description'
+          ? 'A picture had no description and was not marked as decorative, so it was left out.'
+          : 'A picture was left out: it has to be a small JPEG, PNG or WebP carried in the file itself.',
+    });
+    return null;
+  }
+  if (room.count >= PICTURE_LIMITS.count || room.total + picture.data.length > PICTURE_LIMITS.total) {
+    room.full = true;
+    return null;
+  }
+  room.count += 1;
+  room.total += picture.data.length;
+  return picture;
 }
 
 function readDate(engine: DateEngine, value: unknown, path: string, issues: Issue[]): FuzzyDate | null {
@@ -143,6 +174,7 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
   const tracks: Track[] = [];
   const trackList = Array.isArray(source.tracks) ? source.tracks : [];
   let room: number = LIMITS.items;
+  const pictures: PictureRoom = { count: 0, total: 0, full: false };
   let overfull = false;
   trackList.slice(0, LIMITS.tracks).forEach((item, t) => {
     if (!isRecord(item)) {
@@ -169,6 +201,7 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
         ...stretch,
         text: cleanText(raw.text, LIMITS.text),
         links: cleanLinks(raw.links, `${path}.links`, issues),
+        picture: readPicture(raw.picture, `${path}.picture`, issues, pictures),
         tone,
       });
     });
@@ -191,12 +224,16 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
         date,
         text: cleanText(raw.text, LIMITS.text),
         links: cleanLinks(raw.links, `${path}.links`, issues),
+        picture: readPicture(raw.picture, `${path}.picture`, issues, pictures),
       });
     });
     const kind = TRACK_KINDS.includes(item.kind as TrackKind) ? (item.kind as TrackKind) : 'nation';
     tracks.push({ name: cleanText(item.name, LIMITS.name) || `Track ${tracks.length + 1}`, kind, group: cleanText(item.group, LIMITS.name), spans, events });
   });
   if (trackList.length > LIMITS.tracks) issues.push({ path: 'tracks', message: `A timeline holds at most ${LIMITS.tracks} tracks; the rest were left out.` });
+  if (pictures.full) {
+    issues.push({ path: 'tracks', message: `A timeline carries at most ${PICTURE_LIMITS.count} pictures, and no more than a profile file has room for; the rest were left out.` });
+  }
   if (overfull) {
     issues.push({
       path: 'tracks',

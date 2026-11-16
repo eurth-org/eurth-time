@@ -9,7 +9,7 @@ import { decodeDate, encodeDate, formatDate, parseDate } from './fuzzy';
 import { getItem, type Era, type Span, type TimeEvent, type Timeline } from './model';
 import { normalizeTimeline, type Issue } from './normalize';
 
-export const CSV_COLUMNS = ['type', 'track', 'title', 'from', 'to', 'from_code', 'to_code', 'duration', 'text', 'links', 'group'] as const;
+export const CSV_COLUMNS = ['type', 'track', 'title', 'from', 'to', 'from_code', 'to_code', 'duration', 'text', 'links', 'group', 'picture'] as const;
 
 /**
  * One cell. Quoted when it must be; and a text that a spreadsheet would run as a formula
@@ -43,6 +43,8 @@ export function timelineCsv(timeline: Timeline, engine: DateEngine): string {
         csvCell(item.text),
         csvCell(item.links.map((link) => link.url).join(' '), false),
         csvCell(group),
+        // A picture's description, not the picture: a sheet is no place for one, and reading a sheet back brings no pictures in.
+        csvCell(item.picture),
       ].join(','),
     );
   };

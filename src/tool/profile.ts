@@ -148,7 +148,7 @@ export function reignsFromDynasty(section: unknown, engine: DateEngine): Track |
     let to = end === undefined ? null : looseDate(engine, end);
     let start = from;
     if (to !== null && dateRange(engine, to).last < dateRange(engine, from).first) [start, to] = [to, from];
-    spans.push({ label, from: start, to, text: cleanText(firstOf(reign, ['text', 'note', 'summary']), LIMITS.text), links: [], tone: 0 });
+    spans.push({ label, from: start, to, text: cleanText(firstOf(reign, ['text', 'note', 'summary']), LIMITS.text), links: [], picture: null, tone: 0 });
   }
   if (spans.length === 0) return null;
   spans.sort((a, b) => compareDates(engine, a.from, b.from));

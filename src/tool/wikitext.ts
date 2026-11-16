@@ -28,7 +28,10 @@ export function wikiLink(label: string, url: string): string {
 
 function row(track: string, item: DescribedItem): string {
   const title = `'''${wikiText(item.title)}'''${item.duration === '' ? '' : ` (${item.duration})`}`;
-  const notes = [item.text === '' ? '' : wikiText(item.text), ...item.links.map((link) => wikiLink(link.label, link.url))].filter((part) => part !== '').join(' ');
+  // A picture can't go into a wiki table from here: it would have to be uploaded to the wiki first. Its description goes instead.
+  const notes = [item.text === '' ? '' : wikiText(item.text), item.picture === '' ? '' : wikiText(`(Picture: ${item.picture})`), ...item.links.map((link) => wikiLink(link.label, link.url))]
+    .filter((part) => part !== '')
+    .join(' ');
   return ['|-', `| data-sort-value="${Math.round(item.first)}" | ${wikiText(item.when)}`, `| ${track}`, `| ${title}`, `| ${notes}`].join('\n');
 }
 

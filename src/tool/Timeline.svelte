@@ -18,6 +18,7 @@
     faDownload,
     faExpand,
     faFileImport,
+    faImage,
     faMagnifyingGlassMinus,
     faMagnifyingGlassPlus,
     faPen,
@@ -47,8 +48,9 @@ import { timelineCsv, timelineFromCsv } from './csv';
   import { dateOfDay, dateRange, formatDate, isBeforeBigBang, parseDate, type FuzzyDate } from './fuzzy';
   import { canRedo, canUndo, record, redo, startHistory, undo } from './history';
   import { extentOf, groupNames, guessWidth, hiddenTracks, presentDay, type LayoutOptions } from './layout';
-  import { encodeTimeline, linkFits, timelineFromLink, timelineLink } from './link';
-  import { LIMITS, TRACK_KINDS, emptyTimeline, getItem, sameRef, titleOf, type Ref, type Timeline, type Track, type TrackKind } from './model';
+  import { encodeTimeline, linkProblem, timelineFromLink, timelineLink } from './link';
+  import { LIMITS, TRACK_KINDS, emptyTimeline, getItem, picturesOf, sameRef, titleOf, type Ref, type Timeline, type Track, type TrackKind } from './model';
+  import { PICTURE_LIMITS, PICTURE_TYPES, SHRINK_STEPS, fitWithin, pictureType, type Picture } from './picture';
   import { KEY_HELP, move, navOrder, revealView, type KeyAction } from './nav';
   import { cleanUrl } from './normalize';
 import { SHEET_CHOICES, printSheets } from './print';
@@ -113,6 +115,11 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
   const description = $derived(describeTimeline(timeline, engine));
   const order = $derived(navOrder(timeline, engine, hidden));
   const card = $derived(selected === null ? null : describeItem(timeline, engine, selected));
+  /** The picture on the card that is open, when it has one. */
+  const cardPicture = $derived.by(() => {
+    const item = selected === null || selected.kind === 'era' ? null : getItem(timeline, selected);
+    return item !== null && 'picture' in item ? item.picture : null;
+  });
   const track = $derived(selectedTrack === null ? null : (timeline.tracks[selectedTrack] ?? null));
   const empty = $derived(timeline.tracks.length === 0 && timeline.eras.length === 0);
   const findings = $derived(embed ? [] : reviewTimeline(timeline, engine));
@@ -125,7 +132,9 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
   // The link, like the profile file, follows what has been let go, not a drag still in the hand.
   const isStart = $derived(story.present.calendar === null && story.present.also === null && encodeTimeline(story.present) === START_PACKED);
   const link = $derived(isStart ? base : timelineLink(base, story.present, true));
-  const fits = $derived(linkFits(link));
+  // Why there is no link to hand out, when there is none: the timeline has pictures on its cards, or it is too long.
+  const problem = $derived(linkProblem(story.present, link));
+  const fits = $derived(problem === null);
   const name = $derived(timeline.title === '' ? 'A timeline' : timeline.title);
 
   function wholeView(of: Timeline, across: number): View {
@@ -382,9 +391,10 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
     tone: number;
     track: number;
     links: { label: string; url: string }[];
+    picture: Picture | null;
   }
-  let draft = $state<Draft>({ title: '', from: '', to: '', ongoing: false, text: '', tone: 0, track: 0, links: [] });
-  let problems = $state<{ from?: string; to?: string; links?: string }>({});
+  let draft = $state<Draft>({ title: '', from: '', to: '', ongoing: false, text: '', tone: 0, track: 0, links: [], picture: null });
+  let problems = $state<{ from?: string; to?: string; links?: string; picture?: string }>({});
 
   function edit() {
     if (selected === null) return;
@@ -403,6 +413,7 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
       tone: 'tone' in item ? item.tone : 0,
       track: selected.kind === 'era' ? 0 : selected.track,
       links,
+      picture: 'picture' in item && item.picture !== null ? { ...item.picture } : null,
     };
     problems = {};
     editing = true;
@@ -435,14 +446,17 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
       if (cleanUrl(url) === null) found.links = 'A link must be a whole address that starts with https://.';
       else links.push({ label: row.label, url });
     }
+    // A picture needs words for whoever can't see it, unless it is only there to please the eye.
+    const picture = draft.picture === null ? null : { data: draft.picture.data, alt: draft.picture.decorative ? '' : draft.picture.alt.trim(), decorative: draft.picture.decorative };
+    if (picture !== null && !picture.decorative && picture.alt === '') found.picture = 'Say what the picture shows, or mark it as decorative.';
     problems = found;
     if (from === null || Object.keys(found).length > 0) return;
 
     let ref = selected;
     let next: Timeline;
     if (ref.kind === 'era') next = updateItem(timeline, ref, { label: draft.title, from, to });
-    else if (ref.kind === 'span') next = updateItem(timeline, ref, { label: draft.title, from, to, text: draft.text, links, tone: draft.tone });
-    else next = updateItem(timeline, ref, { title: draft.title, date: from, text: draft.text, links });
+    else if (ref.kind === 'span') next = updateItem(timeline, ref, { label: draft.title, from, to, text: draft.text, links, picture, tone: draft.tone });
+    else next = updateItem(timeline, ref, { title: draft.title, date: from, text: draft.text, links, picture });
     if (ref.kind !== 'era' && draft.track !== ref.track) {
       const moved = moveItem(next, ref, draft.track);
       next = moved.timeline;
@@ -604,19 +618,79 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
     download(timelineCsv(timeline, engine), `${slug}.csv`, 'text/csv');
   }
 
-  /** Asks for a file and gives its text, or null when none is chosen or it is too big to be a timeline. */
-  function pickText(accept: string): Promise<string | null> {
+  /** Asks for a file from the device, or null when none is chosen. Nothing is sent anywhere: the file is read here. */
+  function pickFile(accept: string): Promise<File | null> {
     return new Promise((resolve) => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = accept;
-      input.onchange = async () => {
-        const file = input.files?.[0];
-        resolve(file === undefined || file.size > 2_000_000 ? null : await file.text().catch(() => null));
-      };
+      input.onchange = () => resolve(input.files?.[0] ?? null);
       input.oncancel = () => resolve(null);
       input.click();
     });
+  }
+
+  /** Asks for a file and gives its text, or null when none is chosen or it is too big to be a timeline. */
+  async function pickText(accept: string): Promise<string | null> {
+    const file = await pickFile(accept);
+    return file === null || file.size > 2_000_000 ? null : await file.text().catch(() => null);
+  }
+
+  /**
+   * A picture from the device, made small enough to carry: drawn to a canvas no larger than a
+   * card needs, which also leaves behind everything the file said about where and when it was
+   * taken, then stored as WebP or JPEG, with less quality and then fewer pixels until it is
+   * under the cap. Null when the file is no picture, or can't be made small enough.
+   */
+  async function shrinkPicture(file: File): Promise<string | null> {
+    if (!(PICTURE_TYPES as readonly string[]).includes(file.type)) return null;
+    let bitmap: ImageBitmap;
+    try {
+      bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch {
+      return null;
+    }
+    try {
+      for (const step of SHRINK_STEPS) {
+        const size = fitWithin(bitmap.width, bitmap.height, step.side);
+        for (const type of ['image/webp', 'image/jpeg']) {
+          const canvas = document.createElement('canvas');
+          canvas.width = size.width;
+          canvas.height = size.height;
+          const context = canvas.getContext('2d');
+          if (!context) return null;
+          // A JPEG has no see-through: give it paper to sit on.
+          if (type === 'image/jpeg') {
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, size.width, size.height);
+          }
+          context.drawImage(bitmap, 0, 0, size.width, size.height);
+          const data = canvas.toDataURL(type, step.quality);
+          // The right kind, the right first bytes, and under the cap: pictureType asks all three.
+          if (pictureType(data) !== null) return data;
+        }
+      }
+      return null;
+    } finally {
+      bitmap.close();
+    }
+  }
+
+  async function choosePicture() {
+    const mine = selected !== null && selected.kind !== 'era' && (getItem(timeline, selected) as { picture: Picture | null } | null)?.picture ? 1 : 0;
+    if (draft.picture === null && picturesOf(timeline).length - mine >= PICTURE_LIMITS.count) {
+      toast(`A timeline carries at most ${PICTURE_LIMITS.count} pictures. Take one off another card first.`);
+      return;
+    }
+    const file = await pickFile(PICTURE_TYPES.join(','));
+    if (file === null) return;
+    const data = await shrinkPicture(file);
+    if (data === null) {
+      toast("That file couldn't be used as a picture. Try a JPEG, a PNG or a WebP.");
+      return;
+    }
+    draft.picture = { data, alt: draft.picture?.alt ?? '', decorative: draft.picture?.decorative ?? false };
+    problems = { ...problems, picture: undefined };
   }
 
   /** Brings another timeline's tracks and eras into this one, and says what came in. */
@@ -713,14 +787,19 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
 
   async function copyEmbed() {
     const address = embedLink(base, timeline);
-    if (!linkFits(address)) {
-      toast('This timeline is too long to embed. Embeds carry the timeline in their link.');
+    const trouble = linkProblem(timeline, address);
+    if (trouble !== null) {
+      toast(trouble === 'pictures' ? "A timeline with pictures can't be embedded: an embed carries the timeline in its link, and pictures can't ride in a link." : 'This timeline is too long to embed. Embeds carry the timeline in their link.');
       return;
     }
     toast((await copyText(embedCode(address, timeline.title, embedHeight(timeline, engine, SCREEN)))) ? 'Embed code copied. Paste it where the timeline should show.' : "That didn't copy. Your browser may not allow it here.");
   }
 
   const kindName: Record<TrackKind, string> = { nation: 'A nation', dynasty: 'A dynasty', world: 'The shared world', other: 'Something else' };
+  const titleAt = (ref: Ref): string => {
+    const item = getItem(timeline, ref);
+    return item === null ? 'it' : titleOf(item);
+  };
   const where = (ref: Ref): string => (ref.kind === 'era' ? 'Era' : (timeline.tracks[ref.track]?.name ?? ''));
 </script>
 
@@ -837,6 +916,32 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
               {/each}
               {#if problems.links}<span class="eu-error">{problems.links}</span>{/if}
             </fieldset>
+            <fieldset class="plain">
+              <legend class="eu-label">Picture</legend>
+              {#if draft.picture !== null}
+                <img class="picture" src={draft.picture.data} alt={draft.picture.decorative || draft.picture.alt.trim() === '' ? 'The picture you chose' : draft.picture.alt} />
+                <label class="eu-field">
+                  <span class="eu-label">What it shows</span>
+                  <input class="eu-input" bind:value={draft.picture.alt} maxlength={PICTURE_LIMITS.alt} disabled={draft.picture.decorative} autocomplete="off" aria-invalid={problems.picture !== undefined} aria-describedby="time-picture-help" />
+                  {#if problems.picture}<span class="eu-error">{problems.picture}</span>{/if}
+                </label>
+                <label class="eu-pill">
+                  <input type="checkbox" bind:checked={draft.picture.decorative} />
+                  <span class="eu-check"><Icon icon={faCheck} /></span>
+                  Decorative: it adds nothing the text doesn't say
+                </label>
+              {/if}
+              <div class="eu-row">
+                <button type="button" class="eu-btn" onclick={choosePicture}><Icon icon={faImage} /> {draft.picture === null ? 'Choose a picture' : 'Choose another'}</button>
+                {#if draft.picture !== null}
+                  <button type="button" class="eu-btn" onclick={() => (draft.picture = null)}><Icon icon={faTrash} /> Take the picture off</button>
+                {/if}
+              </div>
+              <p class="eu-help" id="time-picture-help">
+                From your device. It is made small here in your browser, and loses where and when it was taken; nothing is uploaded. A timeline with pictures is saved as a profile file: pictures
+                can't ride in a link.
+              </p>
+            </fieldset>
           {/if}
           <div class="eu-row">
             <button type="submit" class="eu-btn eu-btn--primary"><Icon icon={faCheck} /> Save</button>
@@ -849,6 +954,7 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
         <p class="what">{card.title} <span class="eu-data eu-muted">{card.when}{card.duration === '' ? '' : ` · ${card.duration}`}</span></p>
         {#if alsoWhen !== ''}<p class="eu-data eu-muted">In {calendarName(also ?? engine)}: {alsoWhen}</p>{/if}
         {#if card.text !== ''}<p>{card.text}</p>{/if}
+        {#if cardPicture !== null}<img class="picture" src={cardPicture.data} alt={cardPicture.decorative ? '' : cardPicture.alt} />{/if}
         {#if card.links.length > 0}
           <p class="eu-row">
             {#each card.links as one (one.url)}
@@ -987,7 +1093,14 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
           return svgToPicture(made.svg, { width: 1200, height: 630, background: made.background });
         }}
         heading={`Share ${name}`}
-        said={{ link: fits ? 'Link copied: the whole timeline is in it.' : 'Link copied. This timeline is too long to ride in it: save the profile file as well.' }}
+        said={{
+          link:
+            problem === null
+              ? 'Link copied: the whole timeline is in it.'
+              : problem === 'pictures'
+                ? "That is only the link to Time. This timeline has pictures, and pictures can't ride in a link: save the profile file and share that."
+                : 'That is only the link to Time. This timeline is too long to ride in a link: save the profile file and share that.',
+        }}
       />
       <div class="eu-row">
         <button type="button" class="eu-btn" data-click="bounce" onclick={saveSvg}><Icon icon={faDownload} /> SVG</button>
@@ -1018,8 +1131,11 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
         <ProfileButtons profile={saved} onload={loaded} onerror={(errors) => toast(errors[0]?.message ?? "That file isn't a nation profile. Pick one that ends in .eurth.json.")} />
       </div>
       <p class="eu-help">
-        {#if fits}
-          The link holds the whole timeline, and the pictures show what is on screen now. The profile file carries your nation from one Eurth tool to the next; nothing is kept in this browser.
+        {#if problem === null}
+          The link holds the whole timeline, and the downloads show what is on screen now. The profile file carries your nation from one Eurth tool to the next; nothing is kept in this browser.
+        {:else if problem === 'pictures'}
+          This timeline has pictures on its cards, and pictures can't ride in a link. Save it as a profile file: that holds all of it, pictures included, and opens here again. Nothing is kept in
+          this browser.
         {:else}
           This timeline has outgrown its link. Save it as a profile file: that holds all of it, and opens here again. Nothing is kept in this browser.
         {/if}
@@ -1041,7 +1157,7 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
               {#if finding.refs.length > 0}
                 <div class="eu-row">
                   {#each finding.refs.slice(0, 4) as ref (`${ref.kind}${ref.kind === 'era' ? '' : ref.track}-${ref.index}`)}
-                    <button type="button" class="eu-btn eu-btn--quiet" onclick={() => show(ref)}>Show {titleOf(getItem(timeline, ref) ?? { title: 'it', date: { year: 1 }, text: '', links: [] })}</button>
+                    <button type="button" class="eu-btn eu-btn--quiet" onclick={() => show(ref)}>Show {titleAt(ref)}</button>
                   {/each}
                 </div>
               {/if}
@@ -1077,7 +1193,7 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
           {#each one.items as item (`${item.kind}${item.ref.index}`)}
             <li>
               <button type="button" class="eu-btn eu-btn--quiet" aria-pressed={sameRef(selected, item.ref)} onclick={() => show(item.ref)}>{item.title}</button>
-              <span><span class="eu-data">{item.when}</span>{#if item.duration !== ''}<span>{` (${item.duration})`}</span>{/if}{#if item.text !== ''}<span>{`. ${item.text}`}</span>{/if}</span>
+              <span><span class="eu-data">{item.when}</span>{#if item.duration !== ''}<span>{` (${item.duration})`}</span>{/if}{#if item.text !== ''}<span>{`. ${item.text}`}</span>{/if}{#if item.picture !== ''}<span>{`${item.text === '' ? '.' : ''} Picture: ${item.picture}${/[.!?…]$/.test(item.picture) ? '' : '.'}`}</span>{/if}</span>
             </li>
           {/each}
         </ul>
@@ -1129,6 +1245,15 @@ import { moveInTime, shiftDate, stepDate, type Part } from './shift';
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: var(--space-4);
     align-items: start;
+  }
+
+  /* A picture on a card: never wider than the card, never taller than it is useful. */
+  .picture {
+    display: block;
+    max-width: min(100%, 20rem);
+    max-height: 20rem;
+    height: auto;
+    border-radius: var(--radius-md);
   }
 
   .what {

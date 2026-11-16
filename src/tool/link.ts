@@ -11,12 +11,12 @@
  * `t` is the timeline, `also` a second calendar to read the axis in, and `cal` its calendar, the same text the calendar maker's "Use in a
  * timeline" link carries; without `cal` the dates are Gregorian. A link is someone else's input: whatever
  * arrives is cleaned by normalizeTimeline, so a mangled or hostile link gives a tidy timeline
- * or nothing, never an error. A timeline too long for a link is saved in the profile file
- * instead (profile.ts).
+ * or nothing, never an error. A timeline too long for a link, or one with pictures on its
+ * cards, is saved in the profile file instead (profile.ts): see linkProblem.
  */
 import { CALENDAR_PARAM, decodeCalendar, decodeJson, encodeCalendar, encodeJson, type CalendarData } from './engine';
 import { encodeDate, type FuzzyDate } from './fuzzy';
-import { TIMELINE_VERSION, TRACK_KINDS, type Link, type Timeline } from './model';
+import { TIMELINE_VERSION, TRACK_KINDS, hasPictures, picturesOf, type Link, type Timeline } from './model';
 import { normalizeTimeline, type Issue } from './normalize';
 
 /** The query parameter that carries a timeline. */
@@ -52,6 +52,7 @@ function trim(list: Packed): Packed {
  * The packed form:
  *   n  the title
  *   p  the present, when it is set
+ *   x  how many pictures were left behind: pictures travel in the profile file only
  *   e  eras: [label, from, to]
  *   k  tracks: [name, kind as 0 to 3, spans, events, group]
  *        span:  [label, from, to, tone, text, links]
@@ -64,6 +65,8 @@ function pack(timeline: Timeline): Record<string, unknown> {
   const packed: Record<string, unknown> = {};
   if (timeline.title !== '') packed.n = timeline.title;
   if (timeline.present !== null) packed.p = encodeDate(timeline.present);
+  // Pictures can't ride in a link. Their number does, so that a link made in spite of that says what it left behind.
+  if (hasPictures(timeline)) packed.x = picturesOf(timeline).length;
   if (timeline.eras.length > 0) packed.e = timeline.eras.map((era) => trim([era.label, date(era.from), date(era.to)]));
   if (timeline.tracks.length > 0) {
     packed.k = timeline.tracks.map((track) =>
@@ -116,7 +119,12 @@ export function decodeTimeline(text: unknown, calendar: CalendarData = null, als
   if (decoded === null || decoded.version !== TIMELINE_VERSION) return null;
   const packed = decoded.value;
   if (typeof packed !== 'object' || packed === null || Array.isArray(packed)) return null;
-  return normalizeTimeline(unpack(packed as Record<string, unknown>, calendar, also));
+  const read = normalizeTimeline(unpack(packed as Record<string, unknown>, calendar, also));
+  const left = (packed as Record<string, unknown>).x;
+  if (typeof left === 'number' && Number.isInteger(left) && left > 0) {
+    read.issues.push({ path: 'pictures', message: `This link came without its ${left === 1 ? 'picture' : `${left} pictures`}: pictures travel in the profile file, not in a link.` });
+  }
+  return read;
 }
 
 /**
@@ -138,6 +146,16 @@ export function timelineLink(base: string, timeline: Timeline, always = false): 
 
 /** Whether a link is short enough to hand out. When it is not, the timeline belongs in a profile file. */
 export const linkFits = (link: string): boolean => link.length <= MAX_LINK_LENGTH;
+
+/**
+ * Why a timeline can't be handed out as a link: it carries pictures, which a link can't hold,
+ * or it is too long. Null when it can. Ask this before offering a link: a timeline with
+ * pictures is saved as a profile file, and its link is never offered without them.
+ */
+export function linkProblem(timeline: Timeline, link: string): 'pictures' | 'long' | null {
+  if (hasPictures(timeline)) return 'pictures';
+  return linkFits(link) ? null : 'long';
+}
 
 /**
  * The timeline a link carries. Takes a whole address, one without its site, or just its query string. A link with a

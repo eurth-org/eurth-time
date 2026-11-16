@@ -15,8 +15,8 @@ const withTracks = (timeline: Timeline, tracks: Track[]): Timeline => ({ ...time
 const replaceAt = <T>(list: readonly T[], index: number, item: T): T[] => list.map((old, i) => (i === index ? item : old));
 
 /** What a new span needs; the rest has defaults. */
-export type NewSpan = { label: string; from: FuzzyDate; to?: FuzzyDate | null; text?: string; links?: Span['links']; tone?: number };
-export type NewEvent = { title: string; date: FuzzyDate; text?: string; links?: TimeEvent['links'] };
+export type NewSpan = { label: string; from: FuzzyDate; to?: FuzzyDate | null; text?: string; links?: Span['links']; tone?: number; picture?: Span['picture'] };
+export type NewEvent = { title: string; date: FuzzyDate; text?: string; links?: TimeEvent['links']; picture?: TimeEvent['picture'] };
 export type NewEra = { label: string; from: FuzzyDate; to?: FuzzyDate | null };
 
 export function setTitle(timeline: Timeline, title: string): Timeline {
