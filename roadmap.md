@@ -44,13 +44,13 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 - **Drag an event or the end of a span** to change its date, with the keyboard doing the same.
 - **Print:** a timeline across several pages, as a PDF made in the browser.
 - **Pictures on cards** (a link to an image, shown in an `<img>`).
-- **Import from CSV,** the same columns the export writes.
 - **A link preview picture per timeline** (a Worker would draw it).
 
 ## 16 November 2026: 0.2.0, the first of the "Later" list
 
 Still not live: the door is 17 December.
 
+- **Import from CSV.** The columns the export writes, in any order, or a sheet typed by hand with a title and a date in each row; dates are read from the compact code when it is there, otherwise from the words, in the timeline's calendar. Rows join the track of their name or start a new one, and nothing already there is added twice. What can't be dated is left out, and undo takes the whole import out again.
 - **WebP beside PNG** for the picture, in the same sizes. A browser that can't make a WebP hands back a PNG, and Time says so and names the file for what it is.
 
 ## 16 November 2026: 0.1.0, built and waiting for its door

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EXAMPLES, exampleById } from '../src/content/examples';
 import { clampView, fitView, zoomView, type View } from '../src/tool/axis';
-import { CSV_COLUMNS, csvCell, timelineCsv } from '../src/tool/csv';
+import { CSV_COLUMNS, MAX_CSV_LENGTH, csvCell, parseCsv, timelineCsv, timelineFromCsv } from '../src/tool/csv';
 import { yearStart } from '../src/tool/dates';
 import { describeTimeline, descriptionText } from '../src/tool/describe';
 import { EMBED_PATH, embedCode, embedHeight, embedLink } from '../src/tool/embed';
@@ -11,6 +11,8 @@ import { extentOf } from '../src/tool/layout';
 import { timelineFromLink } from '../src/tool/link';
 import { countItems, emptyTimeline, titleOf } from '../src/tool/model';
 import { normalizeTimeline } from '../src/tool/normalize';
+import { addedLine, mergeTimeline } from '../src/tool/ops';
+import { encodeDate } from '../src/tool/fuzzy';
 import { escapeXml, fileSlug, pictureName, timelineSvg } from '../src/tool/svg';
 import { timelineWikitext, wikiLink, wikiText } from '../src/tool/wikitext';
 import { between, gregorian, random } from './helpers/engines';
@@ -256,6 +258,108 @@ describe('the spreadsheet', () => {
       if (row[6] !== '') expect(formatDate(engine, cleanDate(engine, row[6]!)!.date)).toBe(row[4]);
       else expect(row[4]).toBe('');
     }
+  });
+});
+
+describe('a sheet read back', () => {
+  /** A timeline as a sheet can carry it: what is on which track and when, without tones, kinds or order. */
+  const essence = (timeline: typeof coast) => ({
+    eras: timeline.eras.map((era) => [era.label, encodeDate(era.from), era.to === null ? '' : encodeDate(era.to)].join('|')).sort(),
+    tracks: timeline.tracks.map((track) => ({
+      name: track.name,
+      spans: track.spans.map((span) => [span.label, encodeDate(span.from), span.to === null ? '' : encodeDate(span.to), span.text, span.links.map((link) => link.url).join(' ')].join('|')).sort(),
+      events: track.events.map((event) => [event.title, encodeDate(event.date), event.text, event.links.map((link) => link.url).join(' ')].join('|')).sort(),
+    })),
+  });
+
+  it.each(EXAMPLES.map((example) => [example.id, example] as const))('%s: comes back from its own export', (_id, example) => {
+    const engine = engineFor(example.timeline.calendar);
+    const read = timelineFromCsv(timelineCsv(example.timeline, engine), example.timeline.calendar)!;
+    expect(read.issues).toEqual([]);
+    const count = countItems(example.timeline);
+    expect(read.rows).toBe(count.eras + count.spans + count.events);
+    expect(essence(read.timeline)).toEqual(essence(example.timeline));
+    expect(read.timeline.calendar).toEqual(example.timeline.calendar);
+  });
+
+  it('reads a sheet typed by hand, with dates in words', () => {
+    const sheet = ['Date,End,Name,Track,Notes', '1789,,Treaty of Selunna,Coastal League,Ends the war', '1702,1789,Coastal War,Coastal League,', 'c. 1640,,Vasil I is crowned,Ostaril,', '"12 April 1961",,"First ""orbital"" flight",,'].join('\n');
+    const read = timelineFromCsv(sheet)!;
+    expect(read.issues).toEqual([]);
+    expect(read.timeline.tracks.map((track) => track.name)).toEqual(['Coastal League', 'Ostaril', 'Imported']);
+    expect(read.timeline.tracks[0]!.events.map((event) => [event.title, encodeDate(event.date), event.text])).toEqual([['Treaty of Selunna', '1789', 'Ends the war']]);
+    expect(read.timeline.tracks[0]!.spans.map((span) => [span.label, encodeDate(span.from), encodeDate(span.to!)])).toEqual([['Coastal War', '1702', '1789']]);
+    expect(encodeDate(read.timeline.tracks[1]!.events[0]!.date)).toBe('~1640');
+    expect(read.timeline.tracks[2]!.events[0]).toMatchObject({ title: 'First "orbital" flight', date: { year: 1961, month: 4, day: 12 } });
+    // In another calendar the same words mean that calendar's dates.
+    const selunnan = timelineFromCsv('title,from\nThe Founding,1 Frostmoon 1 FS\nMidyear,Midyear Day 1020 FS', exampleById('selunna')!.timeline.calendar)!;
+    expect(selunnan.timeline.tracks[0]!.events.map((event) => encodeDate(event.date))).toEqual(['1-1-1', '1020-i1-1']);
+  });
+
+  it('takes the type from the sheet, an open end for a span, and links', () => {
+    const sheet = 'type,track,title,from_code,to_code,links\r\nera,,Age of Sail,1600,1820,\r\nspan,Teland,Republic,1871,,https://eurth.org/a https://eurth.org/b\r\nevent,Teland,Vote,1923,1930,\r\n';
+    const read = timelineFromCsv(sheet)!;
+    expect(read.timeline.eras).toEqual([{ label: 'Age of Sail', from: { year: 1600 }, to: { year: 1820 } }]);
+    expect(read.timeline.tracks[0]!.spans[0]).toMatchObject({ label: 'Republic', to: null });
+    expect(read.timeline.tracks[0]!.spans[0]!.links.map((link) => link.url)).toEqual(['https://eurth.org/a', 'https://eurth.org/b']);
+    // An event is a single date, whatever the sheet put in its end column.
+    expect(read.timeline.tracks[0]!.events.map((event) => encodeDate(event.date))).toEqual(['1923']);
+  });
+
+  it('undoes the apostrophe the export puts before a would-be formula', () => {
+    const read = timelineFromCsv(timelineCsv(hostile, gregorian))!;
+    expect(essence(read.timeline)).toEqual(essence(hostile));
+    expect(read.timeline.tracks[0]!.events.map((event) => event.title)).toContain('=HYPERLINK("https://example.org")');
+  });
+
+  it('leaves out what it cannot date, and says so', () => {
+    const read = timelineFromCsv('title,from\nKnown,1650\nUnknown,some time ago\nNonsense,31 February 1700\n,1700')!;
+    expect(read.rows).toBe(4);
+    expect(read.timeline.tracks[0]!.events.map((event) => event.title)).toEqual(['Known', 'Untitled event']);
+    expect(read.issues.length).toBe(2);
+  });
+
+  it('gives nothing for what is not a timeline sheet, and never throws', () => {
+    for (const junk of [null, 7, '', '\n\n', 'just some words', 'a,b,c\n1,2,3', 'title\nNo date column', 'from\n1650', `title,from\n${'x'.repeat(MAX_CSV_LENGTH)}`]) expect(timelineFromCsv(junk), String(junk).slice(0, 20)).toBeNull();
+    expect(timelineFromCsv('title,from')!.timeline).toEqual(emptyTimeline());
+    expect(parseCsv('\uFEFFa,b\n"c\nd",e\n\n ,\n"unclosed,f')).toEqual([['a', 'b'], ['c\nd', 'e'], ['unclosed,f']]);
+    expect(parseCsv('a,"b"c",d')).toEqual([['a', 'bc"', 'd']]);
+  });
+});
+
+describe('one timeline brought into another', () => {
+  const extra = normalizeTimeline({
+    eras: [{ label: 'Age of Sail', from: '1600', to: '1820' }, { label: 'Age of Steam', from: '1830', to: '1900' }],
+    tracks: [
+      { name: 'TELAND', events: [{ title: 'The Lantern Revolt', date: '1869-3-18' }, { title: 'The harbour freezes', date: '1740' }], spans: [{ label: 'House Delmaris', from: '1622', to: '1870' }] },
+      { name: 'Ardenmark', kind: 'nation', events: [{ title: 'Founded', date: '1699' }] },
+    ],
+  }).timeline;
+
+  it('adds what is new, to the track of the same name or as a new track', () => {
+    const { timeline, added } = mergeTimeline(coast, extra);
+    expect(added).toEqual({ tracks: 1, spans: 0, events: 2, eras: 1 });
+    expect(addedLine(added)).toBe('1 track, 2 events and 1 era');
+    expect(timeline.tracks.map((track) => track.name)).toEqual([...coast.tracks.map((track) => track.name), 'Ardenmark']);
+    expect(timeline.tracks[0]!.events.map((event) => event.title)).toEqual([...coast.tracks[0]!.events.map((event) => event.title), 'The harbour freezes']);
+    expect(timeline.tracks[0]!.spans).toEqual(coast.tracks[0]!.spans);
+    expect(timeline.eras.map((era) => era.label)).toEqual(['Age of Sail', 'Industrial age', 'Modern era', 'Age of Steam']);
+    expect(normalizeTimeline(timeline).issues).toEqual([]);
+    // Neither timeline is changed.
+    expect(coast.tracks.length).toBe(4);
+    expect(extra.tracks[0]!.events.length).toBe(2);
+  });
+
+  it('adds nothing twice', () => {
+    const once = mergeTimeline(coast, extra).timeline;
+    const twice = mergeTimeline(once, extra);
+    expect(twice.added).toEqual({ tracks: 0, spans: 0, events: 0, eras: 0 });
+    expect(addedLine(twice.added)).toBe('nothing new');
+    expect(twice.timeline).toEqual(once);
+    expect(mergeTimeline(coast, coast).timeline).toEqual(coast);
+    expect(addedLine({ tracks: 0, spans: 1, events: 0, eras: 0 })).toBe('1 span');
+    // The timeline being added to keeps its own title and calendar.
+    expect(mergeTimeline(emptyTimeline(), coast).timeline).toEqual({ ...coast, title: '' });
   });
 });
 

@@ -4,7 +4,7 @@
  * (see history.ts). A change that cannot be made gives back the timeline it was given.
  */
 import type { CalendarData } from './engine';
-import type { FuzzyDate } from './fuzzy';
+import { encodeDate, type FuzzyDate } from './fuzzy';
 import { LIMITS, type Era, type Ref, type Span, type TimeEvent, type Timeline, type Track, type TrackKind } from './model';
 import { normalizeTimeline, type Issue } from './normalize';
 
@@ -56,6 +56,60 @@ export function moveTrack(timeline: Timeline, from: number, to: number): Timelin
   const tracks = timeline.tracks.filter((_, i) => i !== from);
   tracks.splice(to, 0, track);
   return withTracks(timeline, tracks);
+}
+
+/** What a merge brought in. */
+export interface Added {
+  tracks: number;
+  spans: number;
+  events: number;
+  eras: number;
+}
+
+/**
+ * Brings another timeline's eras and tracks into this one: an imported sheet, or someone else's
+ * nation. A track whose name is already here (whatever its capitals) gains the newcomer's spans
+ * and events; any other is added whole, at the end. A thing that is already here, by its name
+ * and its dates, is not added twice. Both timelines must be in the same calendar: see convert.ts
+ * for when they are not. `added` counts what came in; limits may leave some of it out.
+ */
+export function mergeTimeline(base: Timeline, incoming: Timeline): { timeline: Timeline; added: Added } {
+  const stamp = (name: string, from: FuzzyDate, to: FuzzyDate | null) => `${name.toLowerCase()}|${encodeDate(from)}|${to === null ? '' : encodeDate(to)}`;
+  const eraKeys = new Set(base.eras.map((era) => stamp(era.label, era.from, era.to)));
+  const eras = [...base.eras, ...incoming.eras.filter((era) => !eraKeys.has(stamp(era.label, era.from, era.to)))];
+  const tracks: Track[] = base.tracks.map((track) => ({ ...track }));
+  for (const track of incoming.tracks) {
+    const home = tracks.find((one) => one.name.toLowerCase() === track.name.toLowerCase());
+    if (home === undefined) {
+      tracks.push(track);
+      continue;
+    }
+    const spanKeys = new Set(home.spans.map((span) => stamp(span.label, span.from, span.to)));
+    const eventKeys = new Set(home.events.map((event) => stamp(event.title, event.date, null)));
+    home.spans = [...home.spans, ...track.spans.filter((span) => !spanKeys.has(stamp(span.label, span.from, span.to)))];
+    home.events = [...home.events, ...track.events.filter((event) => !eventKeys.has(stamp(event.title, event.date, null)))];
+  }
+  const timeline = clean({ ...base, eras, tracks });
+  const count = (of: Timeline) => ({ tracks: of.tracks.length, spans: of.tracks.reduce((sum, track) => sum + track.spans.length, 0), events: of.tracks.reduce((sum, track) => sum + track.events.length, 0), eras: of.eras.length });
+  const before = count(base);
+  const after = count(timeline);
+  return { timeline, added: { tracks: after.tracks - before.tracks, spans: after.spans - before.spans, events: after.events - before.events, eras: after.eras - before.eras } };
+}
+
+/** "2 tracks, 3 spans and 12 events", for what a merge brought in; "nothing new" when it brought nothing. */
+export function addedLine(added: Added): string {
+  const parts = (
+    [
+      [added.tracks, 'track'],
+      [added.spans, 'span'],
+      [added.events, 'event'],
+      [added.eras, 'era'],
+    ] as const
+  )
+    .filter(([n]) => n > 0)
+    .map(([n, word]) => `${n} ${word}${n === 1 ? '' : 's'}`);
+  if (parts.length === 0) return 'nothing new';
+  return parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]!}`;
 }
 
 /** Removes a track and everything on it. */

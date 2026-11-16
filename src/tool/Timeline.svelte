@@ -17,6 +17,7 @@
     faCode,
     faDownload,
     faExpand,
+    faFileImport,
     faMagnifyingGlassMinus,
     faMagnifyingGlassPlus,
     faPen,
@@ -37,7 +38,7 @@
   import { EXAMPLES } from '../content/examples';
   import { clampView, defaultView, fitView, panView, resizeView, viewLabel, viewPrecision, xOf, zoomView, type View } from './axis';
   import Chart from './Chart.svelte';
-  import { timelineCsv } from './csv';
+  import { timelineCsv, timelineFromCsv } from './csv';
   import { calendarName, countLine, describeItem, describeTimeline, descriptionText } from './describe';
   import { embedCode, embedHeight, embedLink } from './embed';
   import { engineFor, type CalendarData } from './engine';
@@ -48,7 +49,7 @@
   import { LIMITS, TRACK_KINDS, emptyTimeline, getItem, sameRef, titleOf, type Ref, type Timeline, type Track, type TrackKind } from './model';
   import { KEY_HELP, move, navOrder, revealView, type KeyAction } from './nav';
   import { cleanUrl } from './normalize';
-  import { addEra, addEvent, addSpan, addTrack, appendTracks, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from './ops';
+  import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from './ops';
   import { readProfile, toProfileSection } from './profile';
   import { pictureName, timelineSvg } from './svg';
   import { TONES, svgTheme } from './theme';
@@ -498,6 +499,47 @@
     download(timelineCsv(timeline, engine), `${slug}.csv`, 'text/csv');
   }
 
+  /** Asks for a file and gives its text, or null when none is chosen or it is too big to be a timeline. */
+  function pickText(accept: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = accept;
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        resolve(file === undefined || file.size > 2_000_000 ? null : await file.text().catch(() => null));
+      };
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
+  }
+
+  /** Brings another timeline's tracks and eras into this one, and says what came in. */
+  function bringIn(other: Timeline, from: string) {
+    const merged = mergeTimeline(timeline, other);
+    if (merged.timeline === timeline || addedLine(merged.added) === 'nothing new') {
+      toast(`Nothing new in ${from}: everything in it is here already.`);
+      return;
+    }
+    commit(merged.timeline);
+    clear();
+    settle();
+    view = wholeView(merged.timeline, width);
+    toast(`Added ${addedLine(merged.added)} from ${from}. Undo takes them out again.`);
+  }
+
+  async function importCsv() {
+    const text = await pickText('.csv,text/csv');
+    if (text === null) return;
+    // The sheet's dates are read in this timeline's calendar: it is being added to this timeline.
+    const read = timelineFromCsv(text, timeline.calendar);
+    if (read === null || (read.timeline.tracks.length === 0 && read.timeline.eras.length === 0)) {
+      toast("That file isn't a timeline sheet. It needs a title column and a from or date column, with a date in each row.");
+      return;
+    }
+    bringIn(read.timeline, 'the sheet');
+  }
+
   async function copyWiki() {
     toast((await copyText(timelineWikitext(timeline, engine))) ? 'Wiki table copied. Paste it into your history section.' : "That didn't copy. Your browser may not allow it here.");
   }
@@ -745,6 +787,7 @@
           </select>
         </label>
         <button type="button" class="eu-btn" data-click="bounce" onclick={saveCsv}><Icon icon={faDownload} /> CSV</button>
+        <button type="button" class="eu-btn" onclick={importCsv}><Icon icon={faFileImport} /> Import CSV</button>
         <button type="button" class="eu-btn" onclick={copyWiki}><Icon icon={faTable} /> Copy wiki table</button>
         <button type="button" class="eu-btn" onclick={copyEmbed}><Icon icon={faCode} /> Copy embed code</button>
         <ProfileButtons profile={saved} onload={loaded} onerror={(errors) => toast(errors[0]?.message ?? "That file isn't a nation profile. Pick one that ends in .eurth.json.")} />
