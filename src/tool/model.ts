@@ -89,6 +89,11 @@ export interface Timeline {
   title: string;
   /** The calendar the dates are in, in @eurth/calendar's shape. Null for the Gregorian calendar. */
   calendar: CalendarData;
+  /**
+   * A second calendar to read the axis and the cards in, beside the timeline's own: so that two
+   * nations can each read it in their own reckoning. Null for none. Both must be tied to Earth.
+   */
+  also: CalendarData;
   eras: Era[];
   tracks: Track[];
 }
@@ -97,7 +102,7 @@ export interface Timeline {
 export type Ref = { kind: 'era'; index: number } | { kind: 'span' | 'event'; track: number; index: number };
 
 /** A timeline with nothing in it. */
-export const emptyTimeline = (): Timeline => ({ v: TIMELINE_VERSION, title: '', calendar: null, eras: [], tracks: [] });
+export const emptyTimeline = (): Timeline => ({ v: TIMELINE_VERSION, title: '', calendar: null, also: null, eras: [], tracks: [] });
 
 /** How many spans and events a timeline holds. */
 export function countItems(timeline: Timeline): { tracks: number; spans: number; events: number; eras: number } {

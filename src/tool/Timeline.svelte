@@ -39,11 +39,11 @@
   import { EXAMPLES } from '../content/examples';
   import { clampView, defaultView, fitView, panView, resizeView, viewLabel, viewPrecision, xOf, zoomView, type View } from './axis';
   import Chart from './Chart.svelte';
-  import { convertTimeline } from './convert';
+  import { canConvert, convertDate, convertTimeline, sameCalendar } from './convert';
 import { timelineCsv, timelineFromCsv } from './csv';
-  import { calendarName, countLine, describeItem, describeTimeline, descriptionText } from './describe';
+  import { calendarName, countLine, describeItem, describeTimeline, descriptionText, formatStretch } from './describe';
   import { embedCode, embedHeight, embedLink } from './embed';
-  import { engineFor, type CalendarData } from './engine';
+  import { GREGORIAN_CALENDAR, engineFor, type CalendarData } from './engine';
   import { dateOfDay, dateRange, formatDate, isBeforeBigBang, parseDate, type FuzzyDate } from './fuzzy';
   import { canRedo, canUndo, record, redo, startHistory, undo } from './history';
   import { extentOf, guessWidth, type LayoutOptions } from './layout';
@@ -52,7 +52,7 @@ import { timelineCsv, timelineFromCsv } from './csv';
   import { KEY_HELP, move, navOrder, revealView, type KeyAction } from './nav';
   import { cleanUrl } from './normalize';
 import { SHEET_CHOICES, printSheets } from './print';
-  import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setCalendar, setTitle, updateItem, updateTrack } from './ops';
+  import { addEra, addEvent, addSpan, addTrack, addedLine, appendTracks, mergeTimeline, moveItem, moveTrack, removeItem, removeTrack, setAlso, setCalendar, setTitle, updateItem, updateTrack } from './ops';
   import { readProfile, toProfileSection } from './profile';
 import { reviewTimeline } from './review';
   import { pictureName, timelineSvg } from './svg';
@@ -97,6 +97,8 @@ import { reviewTimeline } from './review';
 
   const timeline = $derived(story.present);
   const engine = $derived(engineFor(timeline.calendar));
+  /** The second calendar the axis and the cards are read in, when there is one. */
+  const also = $derived(timeline.also === null ? null : engineFor(timeline.also));
   const options = $derived<Partial<LayoutOptions>>({ ...SCREEN, measure });
   const description = $derived(describeTimeline(timeline, engine));
   const order = $derived(navOrder(timeline, engine));
@@ -434,6 +436,31 @@ import { reviewTimeline } from './review';
     toast(moved === 0 ? `Now dated in ${calendarName(engineFor(calendar))}.` : `Now dated in ${calendarName(engineFor(calendar))}. ${moved} ${moved === 1 ? 'date' : 'dates'} had to move to fit.`);
   }
 
+  // A second calendar on the axis: the Gregorian one, or the profile's, when both it and the
+  // timeline's own are tied to Earth. The one in use stays in the list wherever it came from.
+  const alsoChoices = $derived.by(() => {
+    const choices: { name: string; calendar: CalendarData }[] = [];
+    const offer = (calendar: CalendarData) => {
+      if (calendar === null || sameCalendar(calendar, timeline.calendar) || choices.some((one) => sameCalendar(one.calendar, calendar))) return;
+      const other = engineFor(calendar);
+      if (canConvert(engine, other)) choices.push({ name: other.name === '' ? 'Another calendar' : other.name, calendar });
+    };
+    offer(timeline.also);
+    offer(GREGORIAN_CALENDAR);
+    offer(offered.calendar);
+    return choices;
+  });
+  const alsoIndex = $derived(timeline.also === null ? -1 : alsoChoices.findIndex((one) => sameCalendar(one.calendar, timeline.also)));
+
+  /** A date or a stretch as the second calendar has it, for the card. */
+  const alsoWhen = $derived.by(() => {
+    if (also === null || selected === null) return '';
+    const item = getItem(timeline, selected);
+    if (item === null) return '';
+    const turn = (date: FuzzyDate) => convertDate(engine, also, date);
+    return 'date' in item ? formatDate(also, turn(item.date)) : formatStretch(also, turn(item.from), item.to === null ? null : turn(item.to));
+  });
+
   const profileCalendarDiffers = $derived(offered.calendar !== null && JSON.stringify(offered.calendar) !== JSON.stringify(timeline.calendar));
 
   function addReigns() {
@@ -478,7 +505,7 @@ import { reviewTimeline } from './review';
     const chosen = getPrefs().theme;
     const dark = chosen === 'dark' || (chosen === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
     const theme = svgTheme(resolveColors(tokens, dark ? 'dark' : 'light'), tokens.type.families);
-    return { ...timelineSvg(timeline, engine, resizeView(view, 1200), { theme }), background: theme.background };
+    return { ...timelineSvg(timeline, engine, resizeView(view, 1200), { theme, also }), background: theme.background };
   }
 
   const slug = $derived(fileSlug(timeline.title, 'timeline'));
@@ -586,7 +613,7 @@ import { reviewTimeline } from './review';
 
   async function print() {
     const light = svgTheme(resolveColors(tokens, 'light'), tokens.type.families);
-    const sheets = printSheets(timeline, engine, { first: view.start, last: view.end }, sheetCount, light);
+    const sheets = printSheets(timeline, engine, { first: view.start, last: view.end }, sheetCount, light, { also });
     const holder = document.createElement('div');
     holder.className = 'time-sheets';
     for (const sheet of sheets) {
@@ -650,7 +677,7 @@ import { reviewTimeline } from './review';
   {/if}
 
   <div class="eu-card sheet">
-    <Chart {timeline} {engine} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ongrab={settle} ontrack={(index) => { clear(); selectedTrack = index; }} />
+    <Chart {timeline} {engine} {also} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ongrab={settle} ontrack={(index) => { clear(); selectedTrack = index; }} />
     {#if empty}
       <p class="eu-muted">{embed ? 'There is no timeline in this link.' : 'Nothing here yet. Add a track for a nation, then give it an event or a span.'}</p>
     {/if}
@@ -747,6 +774,7 @@ import { reviewTimeline } from './review';
       {:else if selected !== null && card !== null}
         <h3 id="time-card" class="eu-kicker">Selected · {where(selected)}</h3>
         <p class="what">{card.title} <span class="eu-data eu-muted">{card.when}{card.duration === '' ? '' : ` · ${card.duration}`}</span></p>
+        {#if alsoWhen !== ''}<p class="eu-data eu-muted">In {calendarName(also ?? engine)}: {alsoWhen}</p>{/if}
         {#if card.text !== ''}<p>{card.text}</p>{/if}
         {#if card.links.length > 0}
           <p class="eu-row">
@@ -819,6 +847,17 @@ import { reviewTimeline } from './review';
             <a class="eu-btn" href={calendarMaker} data-same-tab>Make a calendar of your own</a>
           {/if}
         </div>
+        {#if alsoChoices.length > 0}
+          <label class="eu-field">
+            <span class="eu-label">Second calendar on the axis</span>
+            <select class="eu-select" value={alsoIndex} onchange={(event) => commit(setAlso(timeline, alsoChoices[Number(event.currentTarget.value)]?.calendar ?? null))}>
+              <option value={-1}>None</option>
+              {#each alsoChoices as choice, index (choice.name)}
+                <option value={index}>{choice.name}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
         <form class="eu-stack other" onsubmit={addFromLink}>
           <label class="eu-field">
             <span class="eu-label">Add tracks from another timeline</span>

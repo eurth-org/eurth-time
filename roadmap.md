@@ -37,7 +37,6 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 
 ### Later
 
-- **A second calendar on the same axis,** so two nations can each read the timeline in their own reckoning.
 - **Group and collapse tracks** (a continent, an alliance).
 - **Drag an event or the end of a span** to change its date, with the keyboard doing the same.
 - **Pictures on cards** (a link to an image, shown in an `<img>`).
@@ -47,6 +46,7 @@ Stijn settled these on 16 November 2026. They are how Time works, not open quest
 
 Still not live: the door is 17 December.
 
+- **A second calendar on the axis,** so that two nations can each read the timeline in their own reckoning. Choose the Gregorian calendar or the one in a loaded profile, and the axis gains a second row of labels with round numbers of its own, each row named; a card gives its date in both; the pictures and the printed sheets carry both rows; and the link remembers (`&also=`). Both calendars must be tied to Earth, or there is no reading one in the other.
 - **A reality check,** as Flagwright checks a flag. Under the timeline, a list of where the history differs from how things have gone on Earth, each with a button that shows the thing in question: a reign longer than any on record, reigns all of a length or too long on average, a war that runs for generations, a cathedral built in a few years, spans that all last a round number, old dates known to the day, a long past with no doubt in it, and a history made only of events. Lengths are measured in Earth's years, whatever the calendar, and written in the calendar's own. It can't say a history is good; it says what is worth a second look.
 - **Print.** What is on screen, on one sheet or spread across up to twelve, each a page of its own with the title, the dates it covers and its place in the run. Spread wider, labels the screen had no room for find room. It goes through the browser's own print dialogue, which is also how it becomes a PDF; paper is light, so the sheets are drawn in the light theme.
 - **Tracks from someone else's timeline.** Paste a link or pick a profile, and its tracks and eras join yours; theirs stays as it was. That is how a shared world's history is built without accounts. When the two timelines are in different calendars and both are tied to Earth, the newcomer's dates are turned into yours: a day stays the same day, a month or a year becomes the one its middle falls in, and a decade or century becomes "about" a year. When either calendar has no link to Earth, Time says so and adds nothing.

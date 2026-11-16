@@ -55,6 +55,8 @@ describe('the reality check', () => {
           spans: [
             { label: 'The Salt War', from: '1500', to: '1561' },
             { label: 'The Short War', from: '1600', to: '1604' },
+            { label: 'Coastal War era', from: '1702', to: '1789' },
+            { label: 'Age of the Border Wars', from: '~1200', to: '1290' },
             { label: 'Building of the Cathedral of Lanterns', from: '1610', to: '1613' },
             { label: 'Building of the Old Temple', from: '1300', to: '1402' },
             { label: 'Warden of the North', from: '1400', to: '1470' },
@@ -105,7 +107,7 @@ describe('the reality check', () => {
 
   it('finds little wrong with the examples, and says what it does find', () => {
     const found = Object.fromEntries(EXAMPLES.map((example) => [example.id, reviewTimeline(example.timeline, engineFor(example.timeline.calendar)).map((finding) => finding.id)]));
-    expect(found).toEqual({ 'oriental-coast': ['long-war'], selunna: [], khara: [] });
+    expect(found).toEqual({ 'oriental-coast': [], selunna: [], khara: [] });
     for (const example of EXAMPLES) {
       for (const finding of reviewTimeline(example.timeline, engineFor(example.timeline.calendar))) {
         expect(finding.message).toMatch(/^[A-Z].*[.]$/);
@@ -116,7 +118,7 @@ describe('the reality check', () => {
   });
 
   it('never says more than a dozen things', () => {
-    const spans = Array.from({ length: 40 }, (_, i) => ({ label: `The ${i}th War`, from: String(1000 + i), to: String(1100 + i) }));
+    const spans = Array.from({ length: 40 }, (_, i) => ({ label: `War number ${i}`, from: String(1000 + i), to: String(1100 + i) }));
     expect(review({ tracks: [{ name: 'Wars', spans }] }).length).toBe(12);
   });
 });

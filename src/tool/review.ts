@@ -102,7 +102,8 @@ export function reviewTimeline(timeline: Timeline, engine: DateEngine): Finding[
       const ref: Ref = { kind: 'span', track: t, index: one.index };
       const earth = one.days / EARTH_YEAR;
       // A war that runs for generations.
-      if (/\bwars?\b/i.test(one.span.label) && earth > 30) {
+      // A label that already says it is an age of wars is not claiming to be one long war.
+      if (/\bwar\b/i.test(one.span.label) && !/\b(era|age|period|wars|years)\b/i.test(one.span.label) && earth > 30) {
         found.push({
           id: 'long-war',
           message: `${one.span.label} lasts ${years(engine, one.days)}. A war that long is really several, with truces between them, as the Hundred Years' War was: consider an era with shorter wars inside it.`,

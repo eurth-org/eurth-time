@@ -4,7 +4,7 @@
  * list cut to size, every date made to fit the calendar, every link https. It never throws, and
  * it says what it had to change.
  */
-import { cleanCalendar, engineFor, type CalendarData, type DateEngine } from './engine';
+import { canConvert, cleanCalendar, engineFor, sameCalendar, type CalendarData, type DateEngine } from './engine';
 import { cleanDate, dateRange, type FuzzyDate } from './fuzzy';
 import { LIMITS, TIMELINE_VERSION, TRACK_KINDS, type Era, type Link, type Span, type TimeEvent, type Timeline, type Track, type TrackKind } from './model';
 
@@ -94,6 +94,22 @@ function readCalendar(value: unknown, issues: Issue[]): CalendarData {
   return copy;
 }
 
+/** A second calendar is kept only when it is a different one and both are tied to Earth: otherwise there is no reading one in the other. */
+function readAlso(value: unknown, calendar: CalendarData, issues: Issue[]): CalendarData {
+  if (value === null || value === undefined) return null;
+  let copy: CalendarData = null;
+  try {
+    if (JSON.stringify(value).length <= LIMITS.calendar) copy = cleanCalendar(value);
+  } catch {
+    copy = null;
+  }
+  if (copy === null || sameCalendar(copy, calendar) || !canConvert(engineFor(calendar), engineFor(copy))) {
+    issues.push({ path: 'also', message: "The second calendar was left out: it must differ from the timeline's own, and both need a link to Earth's calendar." });
+    return null;
+  }
+  return copy;
+}
+
 /**
  * A clean timeline from anything. `issues` lists what was changed or left out; it is empty for
  * a timeline that was already clean, and a clean timeline comes back equal to what went in.
@@ -103,6 +119,7 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
   const source = isRecord(input) ? input : {};
   if (!isRecord(input)) issues.push({ path: '', message: 'This is not a timeline, so an empty one was started.' });
   const calendar = readCalendar(source.calendar, issues);
+  const also = readAlso(source.also, calendar, issues);
   const engine = engineFor(calendar);
 
   const eras: Era[] = [];
@@ -182,5 +199,5 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
     });
   }
 
-  return { timeline: { v: TIMELINE_VERSION, title: cleanText(source.title, LIMITS.title), calendar, eras, tracks }, issues };
+  return { timeline: { v: TIMELINE_VERSION, title: cleanText(source.title, LIMITS.title), calendar, also, eras, tracks }, issues };
 }

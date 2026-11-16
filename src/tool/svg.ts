@@ -12,6 +12,7 @@
  * Every text from the timeline is escaped: a title is someone else's input.
  */
 import { labelShown, ticks, viewLabel, type TickOptions, type View } from './axis';
+import { viewIn } from './convert';
 import { describeItem, describeTimeline, descriptionText } from './describe';
 import type { DateEngine } from './engine';
 import { fitText, layoutTimeline, LAYOUT_DEFAULTS, type LayoutOptions } from './layout';
@@ -43,6 +44,8 @@ export interface SvgOptions {
   heading?: boolean;
   /** A few words after the stretch of time in the heading: "sheet 2 of 4". */
   note?: string;
+  /** A second calendar to label the axis in, under the timeline's own. Both must be tied to Earth. */
+  also?: DateEngine | null;
   /** The width kept for the track names, and the space around everything. */
   gutter?: number;
   padding?: number;
@@ -84,7 +87,10 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
   const plotX = padding + gutter;
   const plotY = padding + headingHeight;
   const width = plotX + view.width + padding;
-  const height = plotY + layout.height + padding;
+  const also = options.also ?? null;
+  // A second calendar has a row of labels of its own under the first.
+  const second = also === null ? 0 : 22;
+  const height = plotY + layout.height + second + padding;
   const tone = (index: number) => theme.tones[index % Math.max(1, theme.tones.length)] ?? { fill: theme.muted, ink: theme.background };
   const text = (x: number, y: number, content: string, attrs: string) => `<text x="${n(x)}" y="${n(y)}" ${attrs}>${escapeXml(content)}</text>`;
   const sans = `font-family="${escapeXml(theme.sans)}" font-size="${SIZE}"`;
@@ -105,8 +111,8 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
     );
   }
   out.push(
-    `<rect x="${n(padding / 2)}" y="${n(plotY - padding / 2)}" width="${n(width - padding)}" height="${n(layout.height + padding)}" rx="12" fill="${theme.panel}"/>`,
-    `<clipPath id="time-plot"><rect x="0" y="0" width="${n(view.width)}" height="${n(layout.height)}"/></clipPath>`,
+    `<rect x="${n(padding / 2)}" y="${n(plotY - padding / 2)}" width="${n(width - padding)}" height="${n(layout.height + second + padding)}" rx="12" fill="${theme.panel}"/>`,
+    `<clipPath id="time-plot"><rect x="0" y="0" width="${n(view.width)}" height="${n(layout.height + second)}"/></clipPath>`,
     `<g transform="translate(${n(plotX)} ${n(plotY)})">`,
   );
 
@@ -119,12 +125,23 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
   }
   out.push(`<line x1="${n(-gutter)}" y1="${n(layout.axisY)}" x2="${n(view.width)}" y2="${n(layout.axisY)}" stroke="${theme.lineStrong}"/>`);
 
+  if (also !== null) {
+    // Which row of the axis is which calendar.
+    const name = (calendar: DateEngine) => fitText(calendar.name === '' ? 'Calendar' : calendar.name, gutter - 12, (t) => o.measure(t, false));
+    out.push(text(-gutter, layout.axisY + 20, name(engine), `${sans} fill="${theme.muted}"`), text(-gutter, layout.axisY + 20 + second, name(also), `${sans} fill="${theme.muted}"`));
+  }
+
   out.push('<g clip-path="url(#time-plot)">');
   const top = layout.tracks[0]?.y ?? layout.axisY;
   for (const tick of ticks(engine, view, options.ticks)) {
     if (tick.opacity <= 0) continue;
     out.push(`<line x1="${n(tick.x)}" y1="${n(top)}" x2="${n(tick.x)}" y2="${n(layout.axisY + 5)}" stroke="${theme.line}" stroke-opacity="${n(tick.opacity)}"/>`);
     if (labelShown(tick)) out.push(text(tick.x, layout.axisY + 20, tick.label, `${mono} text-anchor="middle" fill="${theme.muted}"`));
+  }
+  if (also !== null) {
+    for (const tick of ticks(also, viewIn(engine, also, view), options.ticks)) {
+      if (labelShown(tick)) out.push(text(tick.x, layout.axisY + 20 + second, tick.label, `${mono} text-anchor="middle" fill="${theme.muted}"`));
+    }
   }
 
   for (const era of layout.eras) {

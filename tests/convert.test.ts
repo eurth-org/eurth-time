@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { GREGORIAN, KHARAN, MERIDIAN, SELUNNAN } from '../src/content/calendars';
 import { exampleById } from '../src/content/examples';
-import { canConvert, convertDate, convertDay, convertTimeline, sameCalendar } from '../src/tool/convert';
+import { xOf } from '../src/tool/axis';
+import { yearStart } from '../src/tool/dates';
+import { canConvert, convertDate, convertDay, convertTimeline, sameCalendar, viewIn } from '../src/tool/convert';
+import { ALSO_PARAM, timelineFromLink, timelineLink } from '../src/tool/link';
+import { setAlso, setCalendar } from '../src/tool/ops';
 import { dateOfDay, dateRange, encodeDate, formatDate } from '../src/tool/fuzzy';
 import { countItems } from '../src/tool/model';
 import { normalizeTimeline } from '../src/tool/normalize';
@@ -120,5 +124,61 @@ describe('a timeline in another calendar', () => {
     expect(timeline.calendar).toBeNull();
     expect(timeline.tracks.map((track) => track.name)).toEqual(['Teland', 'Ostaril', 'Coastal League', 'Shared world', 'Selunna', 'House Ardent', 'The wider world']);
     expect(normalizeTimeline(timeline).issues).toEqual([]);
+  });
+});
+
+describe('a second calendar to read the axis in', () => {
+  const selunna = exampleById('selunna')!.timeline;
+  const coast = exampleById('oriental-coast')!.timeline;
+  const khara = exampleById('khara')!.timeline;
+
+  it('is kept when it differs from the timeline’s own and both are tied to Earth', () => {
+    expect(setAlso(selunna, GREGORIAN).also).toEqual(GREGORIAN);
+    expect(setAlso(coast, SELUNNAN).also).toEqual(SELUNNAN);
+    expect(setAlso(selunna, MERIDIAN).also).toEqual(MERIDIAN);
+    expect(setAlso(setAlso(selunna, GREGORIAN), null).also).toBeNull();
+    // Nothing else about the timeline changes.
+    expect({ ...setAlso(selunna, GREGORIAN), also: null }).toEqual(selunna);
+  });
+
+  it('is left out when there is no reading one calendar in the other', () => {
+    // The same calendar twice, a calendar that stands alone, and no calendar at all.
+    expect(setAlso(coast, GREGORIAN).also).toBeNull();
+    expect(setAlso(selunna, SELUNNAN).also).toBeNull();
+    expect(setAlso(coast, KHARAN).also).toBeNull();
+    expect(setAlso(khara, GREGORIAN).also).toBeNull();
+    for (const junk of ['gregorian', 7, {}, { months: [] }]) {
+      const { timeline, issues } = normalizeTimeline({ ...selunna, also: junk });
+      expect(timeline.also).toBeNull();
+      expect(issues.map((issue) => issue.path)).toEqual(['also']);
+    }
+    // Putting the timeline in the calendar that was its second leaves it with none.
+    expect(setCalendar(setAlso(selunna, GREGORIAN), null).timeline.also).toBeNull();
+    expect(setCalendar(setAlso(selunna, GREGORIAN), KHARAN).timeline.also).toBeNull();
+  });
+
+  it('travels in the link', () => {
+    const both = setAlso(selunna, GREGORIAN);
+    const link = timelineLink('https://time.eurth.org/', both, true);
+    expect(new URL(link).searchParams.has(ALSO_PARAM)).toBe(true);
+    expect(timelineFromLink(link)).toEqual({ timeline: both, issues: [] });
+    expect(new URL(timelineLink('https://time.eurth.org/', selunna, true)).searchParams.has(ALSO_PARAM)).toBe(false);
+    // A second calendar that can't be one is dropped, with a word about it.
+    const odd = timelineFromLink(link.replace(/also=[^&]+/, `also=${new URL(timelineLink('https://time.eurth.org/', khara, true)).searchParams.get('cal')}`))!;
+    expect(odd.timeline.also).toBeNull();
+    expect(odd.issues.map((issue) => issue.path)).toEqual(['also']);
+    expect(odd.timeline.tracks).toEqual(selunna.tracks);
+  });
+
+  it('shows the same stretch of time in the other calendar’s days', () => {
+    const view = { start: yearStart(selunnan, 1022), end: yearStart(selunnan, 1023), width: 900 };
+    const other = viewIn(selunnan, gregorian, view);
+    expect(other.width).toBe(900);
+    expect(other.end - other.start).toBe(view.end - view.start);
+    // 17 Harvestmoon 1022 FS and 12 November 2026 are the same pixel.
+    const here = dateRange(selunnan, { year: 1022, month: 9, day: 17 }).first;
+    const there = dateRange(gregorian, { year: 2026, month: 11, day: 12 }).first;
+    expect(xOf(other, there)).toBeCloseTo(xOf(view, here), 9);
+    expect(viewIn(kharan, kharan, view)).toEqual(view);
   });
 });

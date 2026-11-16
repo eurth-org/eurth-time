@@ -8,7 +8,7 @@
  *
  *   https://time.eurth.org/?t=1.eyJuIjoi…&cal=1.eyJtIjpb…
  *
- * `t` is the timeline and `cal` its calendar, the same text the calendar maker's "Use in a
+ * `t` is the timeline, `also` a second calendar to read the axis in, and `cal` its calendar, the same text the calendar maker's "Use in a
  * timeline" link carries; without `cal` the dates are Gregorian. A link is someone else's input: whatever
  * arrives is cleaned by normalizeTimeline, so a mangled or hostile link gives a tidy timeline
  * or nothing, never an error. A timeline too long for a link is saved in the profile file
@@ -21,6 +21,9 @@ import { normalizeTimeline, type Issue } from './normalize';
 
 /** The query parameter that carries a timeline. */
 export const TIMELINE_PARAM = 't';
+
+/** The query parameter that carries a second calendar to read the axis in. */
+export const ALSO_PARAM = 'also';
 
 /** The longest link Time hands out. Longer than this and browsers, forums and chat apps start to cut links short. */
 export const MAX_LINK_LENGTH = 8000;
@@ -78,10 +81,11 @@ const rows = (value: unknown): unknown[][] => (Array.isArray(value) ? value.filt
 const unpackLinks = (value: unknown): unknown[] => rows(value).map(([label, url]) => ({ label, url }));
 
 /** The packed form opened out into the shape of a timeline, unchecked. */
-function unpack(packed: Record<string, unknown>, calendar: CalendarData): unknown {
+function unpack(packed: Record<string, unknown>, calendar: CalendarData, also: CalendarData): unknown {
   return {
     title: packed.n,
     calendar,
+    also,
     eras: rows(packed.e).map(([label, from, to]) => ({ label, from, to: to === '' ? null : to })),
     tracks: rows(packed.k).map(([name, kind, spans, events]) => ({
       name,
@@ -102,12 +106,12 @@ export function encodeTimeline(timeline: Timeline): string {
  * timeline at all (too long, malformed, from a version this code does not know); otherwise a
  * clean timeline and a list of whatever had to be put right.
  */
-export function decodeTimeline(text: unknown, calendar: CalendarData = null): { timeline: Timeline; issues: Issue[] } | null {
+export function decodeTimeline(text: unknown, calendar: CalendarData = null, also: CalendarData = null): { timeline: Timeline; issues: Issue[] } | null {
   const decoded = decodeJson(text, MAX_TIMELINE_TEXT);
   if (decoded === null || decoded.version !== TIMELINE_VERSION) return null;
   const packed = decoded.value;
   if (typeof packed !== 'object' || packed === null || Array.isArray(packed)) return null;
-  return normalizeTimeline(unpack(packed as Record<string, unknown>, calendar));
+  return normalizeTimeline(unpack(packed as Record<string, unknown>, calendar, also));
 }
 
 /**
@@ -123,6 +127,7 @@ export function timelineLink(base: string, timeline: Timeline, always = false): 
   const empty = timeline.title === '' && timeline.eras.length === 0 && timeline.tracks.length === 0;
   if (!empty || always) url.searchParams.set(TIMELINE_PARAM, encodeTimeline(timeline));
   if (timeline.calendar !== null) url.searchParams.set(CALENDAR_PARAM, encodeCalendar(timeline.calendar));
+  if (timeline.also !== null) url.searchParams.set(ALSO_PARAM, encodeCalendar(timeline.also));
   return url.toString();
 }
 
@@ -151,11 +156,12 @@ export function timelineFromLink(link: string): { timeline: Timeline; issues: Is
   if (calendarText !== null && calendar === null) {
     issues.push({ path: 'calendar', message: 'The calendar in this link could not be read, so the dates are shown in the Gregorian calendar.' });
   }
+  const also = decodeCalendar(params.get(ALSO_PARAM));
   if (timelineText === null) {
-    const empty = normalizeTimeline({ calendar });
+    const empty = normalizeTimeline({ calendar, also });
     return { timeline: empty.timeline, issues: [...issues, ...empty.issues] };
   }
-  const decoded = decodeTimeline(timelineText, calendar);
+  const decoded = decodeTimeline(timelineText, calendar, also);
   if (decoded === null) return null;
   return { timeline: decoded.timeline, issues: [...issues, ...decoded.issues] };
 }

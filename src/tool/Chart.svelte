@@ -12,7 +12,8 @@
    * Dragging slides the view, pinching or Ctrl with the wheel zooms about the pointer, and a
    * plain wheel scrolls the page as it always does.
    */
-  import { labelShown, panView, ticks, zoomView, type View } from './axis';
+  import { labelShown, panView, ticks, zoomView, type Tick, type View } from './axis';
+  import { viewIn } from './convert';
   import { describeItem } from './describe';
   import type { DateEngine } from './engine';
   import { layoutTimeline, type LayoutOptions } from './layout';
@@ -22,6 +23,7 @@
   let {
     timeline,
     engine,
+    also = null,
     view = $bindable(),
     width = $bindable(),
     options,
@@ -36,6 +38,8 @@
   }: {
     timeline: Timeline;
     engine: DateEngine;
+    /** A second calendar to label the axis in, under the timeline's own; null for none. */
+    also?: DateEngine | null;
     /** The stretch of time on screen. The chart changes it when dragged or pinched. */
     view: View;
     /** The width of the plot in pixels, as measured on the page. */
@@ -77,12 +81,12 @@
    * decade), and one that would run into a label already placed is left out: so they never
    * overlap, however long an era's name is or however narrow the screen.
    */
-  const labels = $derived.by(() => {
+  function place(list: readonly Tick[]): Map<number, number> {
     // Dates are set in the suite's monospace type, which is a little wider than the words the layout measures.
     const half = (label: string) => ((options.measure?.(label, false) ?? label.length * 8) * 1.25) / 2 + 2;
     const placed: { from: number; to: number }[] = [];
     const out = new Map<number, number>();
-    const wanted = tickList.filter(labelShown).sort((a, b) => b.opacity - a.opacity || a.days - b.days);
+    const wanted = list.filter(labelShown).sort((a, b) => b.opacity - a.opacity || a.days - b.days);
     for (const tick of wanted) {
       const size = half(tick.label);
       if (size * 2 > view.width) continue;
@@ -94,7 +98,15 @@
       out.set(tick.days, x);
     }
     return out;
-  });
+  }
+
+  const labels = $derived(place(tickList));
+
+  // The second calendar's row of labels: the same stretch of time, counted in its own days.
+  const alsoTicks = $derived(also === null ? [] : ticks(also, viewIn(engine, also, view), tickOptions));
+  const alsoLabels = $derived(place(alsoTicks));
+  /** The height of the second calendar's row of labels. */
+  const second = $derived(also === null ? 0 : 24);
 
   const idOf = (ref: Ref): string => (ref.kind === 'era' ? `time-era-${ref.index}` : `time-${ref.kind}-${ref.track}-${ref.index}`);
   const nameOf = (ref: Ref): string => {
@@ -182,7 +194,11 @@
 </script>
 
 <div class="chart">
-  <div class="names" style:height="{layout.height}px">
+  <div class="names" style:height="{layout.height + second}px">
+    {#if also !== null}
+      <p class="axis-name" style:top="{layout.axisY + 8}px">{engine.name === '' ? 'Calendar' : engine.name}</p>
+      <p class="axis-name" style:top="{layout.axisY + 8 + second}px">{also.name === '' ? 'Second calendar' : also.name}</p>
+    {/if}
     {#each layout.tracks as track (track.index)}
       {#if readonly}
         <p class="name" style:top="{track.y}px" style:height="{track.height}px">{track.name}</p>
@@ -211,7 +227,7 @@
     aria-label={timeline.title === '' ? 'Timeline' : `Timeline: ${timeline.title}`}
     aria-describedby="time-keys"
     aria-activedescendant={active === null ? undefined : idOf(active)}
-    style:height="{layout.height}px"
+    style:height="{layout.height + second}px"
     onkeydown={keydown}
     onpointerdown={down}
     onpointermove={moved}
@@ -226,6 +242,9 @@
       {#each tickList as tick (tick.days)}
         <div class="tick" style:left="{tick.x}px" style:top="{top}px" style:height="{layout.axisY - top + 6}px" style:opacity={tick.opacity}></div>
         <span class="tick-label eu-data" class:shown={labels.has(tick.days)} style:left="{labels.get(tick.days) ?? tick.x}px" style:top="{layout.axisY + 8}px">{tick.label}</span>
+      {/each}
+      {#each alsoTicks as tick (tick.days)}
+        <span class="tick-label eu-data" class:shown={alsoLabels.has(tick.days)} style:left="{alsoLabels.get(tick.days) ?? tick.x}px" style:top="{layout.axisY + 8 + second}px">{tick.label}</span>
       {/each}
     </div>
 
@@ -341,6 +360,20 @@
 
   button.name {
     cursor: pointer;
+  }
+
+  /* Which row of the axis is which calendar, when there are two. */
+  .axis-name {
+    position: absolute;
+    left: 0;
+    right: var(--space-2);
+    margin: 0;
+    overflow: hidden;
+    color: var(--ink-muted);
+    font: var(--type-note);
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   button.name:hover,

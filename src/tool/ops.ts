@@ -32,6 +32,15 @@ export function setCalendar(timeline: Timeline, calendar: CalendarData): { timel
   return normalizeTimeline({ ...timeline, calendar });
 }
 
+/**
+ * Sets, or with null takes away, the second calendar the axis is read in. It is kept only when
+ * it differs from the timeline's own and both are tied to Earth; otherwise the timeline comes
+ * back with none.
+ */
+export function setAlso(timeline: Timeline, also: CalendarData): Timeline {
+  return clean({ ...timeline, also });
+}
+
 /** Adds a track at the end. */
 export function addTrack(timeline: Timeline, name = '', kind: TrackKind = 'nation'): Timeline {
   if (timeline.tracks.length >= LIMITS.tracks) return timeline;

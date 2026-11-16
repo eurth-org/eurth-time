@@ -160,6 +160,29 @@ describe('the picture', () => {
   });
 });
 
+describe('the picture with two calendars', () => {
+  it('labels the axis in both, and says which row is which', () => {
+    const selunna = exampleById('selunna')!.timeline;
+    const engine = engineFor(selunna.calendar);
+    const view: View = { start: yearStart(engine, 300), end: yearStart(engine, 800), width: 1000 };
+    const one = timelineSvg(selunna, engine, view, { theme: TEST_THEME });
+    const two = timelineSvg(selunna, engine, view, { theme: TEST_THEME, also: gregorian });
+    readXml(two.svg);
+    expect(two.height).toBe(one.height + 22);
+    expect(two.width).toBe(one.width);
+    // Year 500 FS is 1506 CE: each calendar has round numbers of its own.
+    for (const label of ['400', '500', '600', '700']) expect(two.svg).toContain(`>${label}</text>`);
+    for (const label of ['1400', '1500', '1600', '1700']) {
+      expect(two.svg).toContain(`>${label}</text>`);
+      expect(one.svg).not.toContain(`>${label}</text>`);
+    }
+    expect(two.svg).toContain('>Selunnan Reckoning</text>');
+    expect(two.svg).toContain('>Gregorian calendar</text>');
+    expect(one.svg).not.toContain('>Gregorian calendar</text>');
+    expect(timelineSvg(selunna, engine, view, { theme: TEST_THEME, also: null }).svg).toBe(one.svg);
+  });
+});
+
 describe('the wiki table', () => {
   it('is a sortable wikitable with a row for everything, earliest first', () => {
     const text = timelineWikitext(coast, gregorian);

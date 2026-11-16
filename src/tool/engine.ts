@@ -135,6 +135,17 @@ export function engineFor(calendar: unknown): DateEngine {
   return engine;
 }
 
+/**
+ * Whether two calendar definitions are one and the same. No calendar at all is the Gregorian
+ * calendar, so it is the same as the Gregorian calendar by name.
+ */
+export function sameCalendar(a: CalendarData, b: CalendarData): boolean {
+  return a === b || JSON.stringify(a ?? GREGORIAN_CALENDAR) === JSON.stringify(b ?? GREGORIAN_CALENDAR);
+}
+
+/** Whether dates in one calendar can be turned into the other: both are tied to Earth, or they are the same engine. */
+export const canConvert = (from: DateEngine, to: DateEngine): boolean => from === to || (from.earth !== null && to.earth !== null);
+
 const toBase64Url = (text: string): string => {
   let binary = '';
   for (const byte of new TextEncoder().encode(text)) binary += String.fromCharCode(byte);

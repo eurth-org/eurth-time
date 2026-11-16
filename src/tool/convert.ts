@@ -10,25 +10,19 @@
  * its middle falls in, a year the year its middle falls in, and a decade or a century, which
  * is a round number in one calendar and not in the other, becomes "about" the year of its middle.
  */
-import type { CalendarData, DateEngine } from './engine';
-import { GREGORIAN_CALENDAR, engineFor } from './engine';
+import type { View } from './axis';
+import { canConvert, engineFor, sameCalendar, type CalendarData, type DateEngine } from './engine';
 import { dateOfDay, dateRange, precisionOf, type FuzzyDate } from './fuzzy';
 import type { Timeline } from './model';
 import { normalizeTimeline } from './normalize';
 
-/**
- * Whether two calendar definitions are one and the same. No calendar at all is the Gregorian
- * calendar, so it is the same as the Gregorian calendar by name.
- */
-export function sameCalendar(a: CalendarData, b: CalendarData): boolean {
-  return a === b || JSON.stringify(a ?? GREGORIAN_CALENDAR) === JSON.stringify(b ?? GREGORIAN_CALENDAR);
-}
-
-/** Whether dates in one calendar can be turned into the other: both are tied to Earth, or they are the same engine. */
-export const canConvert = (from: DateEngine, to: DateEngine): boolean => from === to || (from.earth !== null && to.earth !== null);
+export { canConvert, sameCalendar };
 
 /** A day number of one calendar as a day number of the other. Both must be tied to Earth. */
 export const convertDay = (from: DateEngine, to: DateEngine, days: number): number => (from === to ? days : days + (from.earth ?? 0) - (to.earth ?? 0));
+
+/** The same stretch of time, in the other calendar's day numbers: for drawing a second axis. Both must be tied to Earth. */
+export const viewIn = (from: DateEngine, to: DateEngine, view: View): View => ({ start: convertDay(from, to, view.start), end: convertDay(from, to, view.end), width: view.width });
 
 /** A date of one calendar in the other, as exactly as it can be said there. Both must be tied to Earth. */
 export function convertDate(from: DateEngine, to: DateEngine, date: FuzzyDate): FuzzyDate {
