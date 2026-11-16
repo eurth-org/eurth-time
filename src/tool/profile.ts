@@ -154,7 +154,7 @@ export function reignsFromDynasty(section: unknown, engine: DateEngine): Track |
   spans.sort((a, b) => compareDates(engine, a.from, b.from));
   // Reigns that follow one another alternate between two tones, so that neighbours differ by more than their labels.
   spans.forEach((span, i) => (span.tone = i % 2));
-  return { name: cleanText(section.house, LIMITS.name) || 'Dynasty', kind: 'dynasty', spans: spans.slice(0, LIMITS.spans), events: [] };
+  return { name: cleanText(section.house, LIMITS.name) || 'Dynasty', kind: 'dynasty', group: '', spans: spans.slice(0, LIMITS.spans), events: [] };
 }
 
 /** What a profile offers Time. */

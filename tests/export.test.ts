@@ -247,9 +247,9 @@ describe('the spreadsheet', () => {
     expect(rows[0]).toEqual([...CSV_COLUMNS]);
     expect(rows.length).toBe(1 + count.eras + count.spans + count.events);
     for (const row of rows) expect(row.length).toBe(CSV_COLUMNS.length);
-    expect(rows[1]).toEqual(['era', '', 'Age of Sail', '1600 CE', '1820 CE', '1600', '1820', '220 years', '', '']);
-    expect(rows.find((row) => row[2] === 'Republic of Teland')).toEqual(['span', 'Teland', 'Republic of Teland', '1871 CE', '', '1871', '', '', coast.tracks[0]!.spans[1]!.text, '']);
-    expect(rows.find((row) => row[2] === 'Treaty of Selunna')).toEqual(['event', 'Coastal League', 'Treaty of Selunna', '1789 CE', '1789 CE', '1789', '1789', '', coast.tracks[2]!.events[1]!.text, 'https://eurth.org/']);
+    expect(rows[1]).toEqual(['era', '', 'Age of Sail', '1600 CE', '1820 CE', '1600', '1820', '220 years', '', '', '']);
+    expect(rows.find((row) => row[2] === 'Republic of Teland')).toEqual(['span', 'Teland', 'Republic of Teland', '1871 CE', '', '1871', '', '', coast.tracks[0]!.spans[1]!.text, '', '']);
+    expect(rows.find((row) => row[2] === 'Treaty of Selunna')).toEqual(['event', 'Coastal League', 'Treaty of Selunna', '1789 CE', '1789 CE', '1789', '1789', '', coast.tracks[2]!.events[1]!.text, 'https://eurth.org/', '']);
     expect(rows.find((row) => row[2] === 'Vasil I is crowned')!.slice(3, 7)).toEqual(['c. 1640 CE', 'c. 1640 CE', '~1640', '~1640']);
     expect(timelineCsv(coast, gregorian).endsWith('\r\n')).toBe(true);
     expect(timelineCsv(emptyTimeline(), gregorian)).toBe(`${CSV_COLUMNS.join(',')}\r\n`);
@@ -291,6 +291,7 @@ describe('a sheet read back', () => {
     eras: timeline.eras.map((era) => [era.label, encodeDate(era.from), era.to === null ? '' : encodeDate(era.to)].join('|')).sort(),
     tracks: timeline.tracks.map((track) => ({
       name: track.name,
+      group: track.group,
       spans: track.spans.map((span) => [span.label, encodeDate(span.from), span.to === null ? '' : encodeDate(span.to), span.text, span.links.map((link) => link.url).join(' ')].join('|')).sort(),
       events: track.events.map((event) => [event.title, encodeDate(event.date), event.text, event.links.map((link) => link.url).join(' ')].join('|')).sort(),
     })),

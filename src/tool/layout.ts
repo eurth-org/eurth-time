@@ -31,6 +31,10 @@ export interface LayoutOptions {
   barPad: number;
   /** Most rows of events in a track. */
   eventRows: number;
+  /** The height of the row that heads a group of tracks. */
+  groupHeight: number;
+  /** The groups that are folded away, by name: their tracks are not drawn, only the group's own row. */
+  collapsed: readonly string[];
   /** The width of a text in pixels. The default is a fair guess for the system font at 13 pixels. */
   measure: (text: string, bold: boolean) => number;
 }
@@ -49,6 +53,8 @@ export const LAYOUT_DEFAULTS: LayoutOptions = Object.freeze({
   labelGap: 6,
   barPad: 10,
   eventRows: 2,
+  groupHeight: 44,
+  collapsed: [],
   measure: guessWidth,
 });
 
@@ -109,16 +115,37 @@ export interface LaidTrack {
   index: number;
   name: string;
   kind: TrackKind;
+  /** The group the track belongs to, or an empty text. */
+  group: string;
+  /** Whether the track is folded away with its group: then it has no height and nothing on it is drawn. */
+  hidden: boolean;
   y: number;
   height: number;
   spans: LaidSpan[];
   events: LaidEvent[];
 }
 
+/** The row that heads a group of tracks: its name, and when the group is folded away, the stretch of time its tracks cover. */
+export interface LaidGroup {
+  name: string;
+  y: number;
+  height: number;
+  collapsed: boolean;
+  /** The tracks in the group, by their place in the timeline. */
+  tracks: number[];
+  /** How many spans and events the group's tracks hold. */
+  items: number;
+  /** The stretch its tracks cover, clipped to the view; null when none of it shows. */
+  x: number | null;
+  w: number;
+}
+
 export interface Layout {
   width: number;
   height: number;
   eras: LaidEra[];
+  /** The rows that head groups of tracks, top to bottom. */
+  groups: LaidGroup[];
   tracks: LaidTrack[];
   /** The top of the axis. */
   axisY: number;
@@ -155,6 +182,15 @@ export function extentOf(timeline: Timeline, engine: DateEngine): Extent | null 
   }
   return first === Infinity ? null : { first, last };
 }
+
+/** The tracks that are folded away with their groups, by their place in the timeline. */
+export function hiddenTracks(timeline: Timeline, collapsed: readonly string[]): Set<number> {
+  const folded = new Set(collapsed);
+  return new Set(timeline.tracks.flatMap((track, index) => (track.group !== '' && folded.has(track.group) ? [index] : [])));
+}
+
+/** The names of the groups in a timeline, in the order they first appear. */
+export const groupNames = (timeline: Timeline): string[] => [...new Set(timeline.tracks.map((track) => track.group).filter((name) => name !== ''))];
 
 /** Puts stretches on rows so that none on a row overlap. Gives the row of each, by its place in the list. */
 export function packRows(stretches: readonly Extent[]): number[] {
@@ -230,7 +266,37 @@ export function layoutTimeline(timeline: Timeline, engine: DateEngine, view: Vie
   });
   y += (eraRows.length === 0 ? 0 : Math.max(...eraRows) + 1) * o.eraHeight;
 
+  const collapsed = new Set(o.collapsed);
+  const groups: LaidGroup[] = [];
   const tracks: LaidTrack[] = timeline.tracks.map((track, index) => {
+    // A group is a run of neighbouring tracks with the same group name; its row comes before the first of them.
+    if (track.group !== '' && timeline.tracks[index - 1]?.group !== track.group) {
+      const members: number[] = [];
+      for (let i = index; i < timeline.tracks.length && timeline.tracks[i]!.group === track.group; i++) members.push(i);
+      let first = Infinity;
+      let last = -Infinity;
+      let items = 0;
+      for (const member of members) {
+        const one = timeline.tracks[member]!;
+        items += one.spans.length + one.events.length;
+        for (const span of one.spans) {
+          const covered = stretch(engine, span.from, span.to);
+          first = Math.min(first, covered.first);
+          last = Math.max(last, covered.last);
+        }
+        for (const event of one.events) {
+          const covered = dateRange(engine, event.date);
+          first = Math.min(first, covered.first);
+          last = Math.max(last, covered.last);
+        }
+      }
+      const placed = first === Infinity ? null : box({ first, last });
+      groups.push({ name: track.group, y, height: o.groupHeight, collapsed: collapsed.has(track.group), tracks: members, items, x: placed?.x ?? null, w: placed?.w ?? 0 });
+      y += o.groupHeight;
+    }
+    if (track.group !== '' && collapsed.has(track.group)) {
+      return { index, name: track.name, kind: track.kind, group: track.group, hidden: true, y, height: 0, spans: [], events: [] };
+    }
     const top = y;
     const stretches = track.spans.map((span) => stretch(engine, span.from, span.to));
     const rows = packRows(stretches);
@@ -319,8 +385,8 @@ export function layoutTimeline(timeline: Timeline, engine: DateEngine, view: Vie
     const rowsHeight = spanRows * (o.spanHeight + o.rowGap) + eventRows * o.eventHeight;
     const height = 2 * o.trackPad + Math.max(rowsHeight - (eventRows === 0 && spanRows > 0 ? o.rowGap : 0), o.eventHeight);
     y += height;
-    return { index, name: track.name, kind: track.kind, y: top, height, spans, events };
+    return { index, name: track.name, kind: track.kind, group: track.group, hidden: false, y: top, height, spans, events };
   });
 
-  return { width, height: y + o.axisHeight, eras, tracks, axisY: y };
+  return { width, height: y + o.axisHeight, eras, groups, tracks, axisY: y };
 }

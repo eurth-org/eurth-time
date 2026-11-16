@@ -31,6 +31,8 @@ export interface DescribedTrack {
   index: number;
   name: string;
   kind: TrackKind;
+  /** The group the track belongs to, or an empty text. */
+  group: string;
   /** Its spans and events together, earliest first. */
   items: DescribedItem[];
 }
@@ -167,6 +169,7 @@ export function describeTimeline(timeline: Timeline, engine: DateEngine): Descri
       index: t,
       name: track.name,
       kind: track.kind,
+      group: track.group,
       items: [
         ...track.spans.map((span, index) => describeStretch(engine, { kind: 'span', track: t, index }, span)),
         ...track.events.map((event, index) => describeEvent(engine, { kind: 'event', track: t, index }, event)),
@@ -190,7 +193,7 @@ export function descriptionText(description: Description): string {
     for (const era of description.eras) lines.push(`- ${itemLine(era)}`);
   }
   for (const track of description.tracks) {
-    lines.push('', track.name);
+    lines.push('', track.group === '' ? track.name : `${track.name} (${track.group})`);
     if (track.items.length === 0) lines.push('- Nothing yet.');
     for (const item of track.items) lines.push(`- ${itemLine(item)}`);
   }

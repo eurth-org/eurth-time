@@ -19,8 +19,12 @@ export interface NavItem {
   last: number;
 }
 
-/** Every era, span and event, in the order things happened. Of two that start together, the upper row first. */
-export function navOrder(timeline: Timeline, engine: DateEngine): NavItem[] {
+/**
+ * Every era, span and event, in the order things happened. Of two that start together, the
+ * upper row first. Tracks folded away (`hidden`, by their place in the list) are left out: the
+ * keyboard walks what is on screen.
+ */
+export function navOrder(timeline: Timeline, engine: DateEngine, hidden: ReadonlySet<number> = new Set()): NavItem[] {
   const items: NavItem[] = [];
   const stretch = (ref: Ref, row: number, from: Parameters<typeof dateRange>[1], to: Parameters<typeof dateRange>[1] | null) => {
     const first = dateRange(engine, from).first;
@@ -28,6 +32,7 @@ export function navOrder(timeline: Timeline, engine: DateEngine): NavItem[] {
   };
   timeline.eras.forEach((era, index) => stretch({ kind: 'era', index }, -1, era.from, era.to));
   timeline.tracks.forEach((track, t) => {
+    if (hidden.has(t)) return;
     track.spans.forEach((span, index) => stretch({ kind: 'span', track: t, index }, t, span.from, span.to));
     track.events.forEach((event, index) => stretch({ kind: 'event', track: t, index }, t, event.date, event.date));
   });

@@ -12,6 +12,8 @@
    * Dragging slides the view, pinching or Ctrl with the wheel zooms about the pointer, and a
    * plain wheel scrolls the page as it always does.
    */
+  import { faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons';
+  import Icon from '@eurth/style/components/Icon.svelte';
   import { labelShown, panView, ticks, zoomView, type Tick, type View } from './axis';
   import { viewIn } from './convert';
   import { describeItem } from './describe';
@@ -34,6 +36,7 @@
     onpick,
     onkey,
     ontrack,
+    ongroup,
     ongrab,
   }: {
     timeline: Timeline;
@@ -54,6 +57,8 @@
     onpick: (ref: Ref) => void;
     onkey: (action: KeyAction) => void;
     ontrack?: (index: number) => void;
+    /** Called when a group's row is pressed: fold its tracks away, or bring them back. */
+    ongroup?: (name: string) => void;
     /** Called when a hand takes hold of the view: a glide in progress should stop. */
     ongrab?: () => void;
   } = $props();
@@ -71,7 +76,7 @@
   const marker = $derived(options.marker ?? 16);
   const barPad = $derived(options.barPad ?? 12);
   const labelGap = $derived(options.labelGap ?? 8);
-  const top = $derived(layout.tracks[0]?.y ?? layout.axisY);
+  const top = $derived(Math.min(layout.tracks[0]?.y ?? layout.axisY, layout.groups[0]?.y ?? layout.axisY));
   // A list to choose from needs something in it; an empty timeline is only a place to drag and zoom.
   const hasItems = $derived(timeline.eras.length > 0 || timeline.tracks.some((track) => track.spans.length > 0 || track.events.length > 0));
 
@@ -199,7 +204,20 @@
       <p class="axis-name" style:top="{layout.axisY + 8}px">{engine.name === '' ? 'Calendar' : engine.name}</p>
       <p class="axis-name" style:top="{layout.axisY + 8 + second}px">{also.name === '' ? 'Second calendar' : also.name}</p>
     {/if}
-    {#each layout.tracks as track (track.index)}
+    {#each layout.groups as group (`${group.name}${group.y}`)}
+      <button
+        type="button"
+        class="name group-name"
+        aria-expanded={!group.collapsed}
+        style:top="{group.y}px"
+        style:height="{group.height}px"
+        onclick={() => ongroup?.(group.name)}
+      >
+        <Icon icon={group.collapsed ? faChevronRight : faChevronDown} />
+        <span class="eu-visually-hidden">Group: </span>{group.name}
+      </button>
+    {/each}
+    {#each layout.tracks.filter((track) => !track.hidden) as track (track.index)}
       {#if readonly}
         <p class="name" style:top="{track.y}px" style:height="{track.height}px">{track.name}</p>
       {:else}
@@ -235,7 +253,16 @@
     onpointercancel={up}
   >
     <div class="lines" aria-hidden="true">
-      {#each layout.tracks as track (track.index)}
+      {#each layout.groups as group (`${group.name}${group.y}`)}
+        <div class="row-line strong" style:top="{group.y}px"></div>
+        {#if group.collapsed}
+          {#if group.x !== null}<div class="fold" style:left="{group.x}px" style:top="{group.y + 12}px" style:width="{group.w}px" style:height="{group.height - 24}px"></div>{/if}
+          <span class="fold-label" style:left="{(group.x ?? 0) + barPad}px" style:top="{group.y}px" style:height="{group.height}px">
+            {group.tracks.length === 1 ? '1 track' : `${group.tracks.length} tracks`} folded away, {group.items === 1 ? '1 thing' : `${group.items} things`} on {group.tracks.length === 1 ? 'it' : 'them'}
+          </span>
+        {/if}
+      {/each}
+      {#each layout.tracks.filter((track) => !track.hidden) as track (track.index)}
         <div class="row-line" style:top="{track.y}px"></div>
       {/each}
       <div class="row-line strong" style:top="{layout.axisY}px"></div>
@@ -272,7 +299,7 @@
       </div>
     {/if}
 
-    {#each layout.tracks as track (track.index)}
+    {#each layout.tracks.filter((track) => !track.hidden) as track (track.index)}
       <div role="group" aria-label={track.name}>
         {#each track.spans as span (span.ref.index)}
           <!-- svelte-ignore a11y_click_events_have_key_events, a11y_interactive_supports_focus -->
@@ -360,6 +387,33 @@
 
   button.name {
     cursor: pointer;
+  }
+
+  /* The row that heads a group of tracks: press it to fold them away or bring them back. */
+  .group-name {
+    align-items: center;
+    gap: var(--space-2);
+    padding-top: 0;
+    color: var(--ink-muted);
+    font: var(--type-kicker);
+    white-space: nowrap;
+  }
+
+  /* A folded group: one hollow bar for the stretch of time its tracks cover, with how much is under it written inside. */
+  .fold {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid var(--line-strong);
+    border-radius: var(--radius-md);
+  }
+
+  .fold-label {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    color: var(--ink-muted);
+    font: var(--type-body-sm);
+    white-space: nowrap;
   }
 
   /* Which row of the axis is which calendar, when there are two. */

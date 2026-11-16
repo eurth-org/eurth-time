@@ -52,7 +52,7 @@ function trim(list: Packed): Packed {
  * The packed form:
  *   n  the title
  *   e  eras: [label, from, to]
- *   k  tracks: [name, kind as 0 to 3, spans, events]
+ *   k  tracks: [name, kind as 0 to 3, spans, events, group]
  *        span:  [label, from, to, tone, text, links]
  *        event: [title, date, text, links]
  *        link:  [label, address]
@@ -70,6 +70,7 @@ function pack(timeline: Timeline): Record<string, unknown> {
         TRACK_KINDS.indexOf(track.kind),
         track.spans.map((span) => trim([span.label, date(span.from), date(span.to), span.tone, span.text, links(span.links)])),
         track.events.map((event) => trim([event.title, date(event.date), event.text, links(event.links)])),
+        track.group,
       ]),
     );
   }
@@ -87,8 +88,9 @@ function unpack(packed: Record<string, unknown>, calendar: CalendarData, also: C
     calendar,
     also,
     eras: rows(packed.e).map(([label, from, to]) => ({ label, from, to: to === '' ? null : to })),
-    tracks: rows(packed.k).map(([name, kind, spans, events]) => ({
+    tracks: rows(packed.k).map(([name, kind, spans, events, group]) => ({
       name,
+      group,
       kind: typeof kind === 'number' ? TRACK_KINDS[kind] : undefined,
       spans: rows(spans).map(([label, from, to, tone, text, list]) => ({ label, from, to: to === '' ? null : to, tone, text, links: unpackLinks(list) })),
       events: rows(events).map(([title, when, text, list]) => ({ title, date: when, text, links: unpackLinks(list) })),

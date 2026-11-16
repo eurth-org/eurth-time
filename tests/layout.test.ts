@@ -3,7 +3,14 @@ import { EXAMPLES, exampleById } from '../src/content/examples';
 import { allTime, clampView, fitView, MIN_VISIBLE_DAYS, xOf, zoomView, type View } from '../src/tool/axis';
 import { yearEnd, yearStart } from '../src/tool/dates';
 import { engineFor } from '../src/tool/engine';
-import { LAYOUT_DEFAULTS, extentOf, fitText, guessWidth, layoutTimeline, packRows } from '../src/tool/layout';
+import { LAYOUT_DEFAULTS, extentOf, fitText, groupNames, guessWidth, hiddenTracks, layoutTimeline, packRows } from '../src/tool/layout';
+import { navOrder } from '../src/tool/nav';
+import { updateTrack } from '../src/tool/ops';
+import { timelineFromLink, timelineLink } from '../src/tool/link';
+import { timelineCsv, timelineFromCsv } from '../src/tool/csv';
+import { describeTimeline, descriptionText } from '../src/tool/describe';
+import { timelineSvg } from '../src/tool/svg';
+import { TEST_THEME, readXml } from './helpers/theme';
 import { emptyTimeline } from '../src/tool/model';
 import { normalizeTimeline } from '../src/tool/normalize';
 import { between, gregorian, random } from './helpers/engines';
@@ -189,5 +196,79 @@ describe('every example, at any zoom', () => {
         expect(event.row).toBeLessThan(o.eventRows);
       }
     }
+  });
+});
+
+describe('groups of tracks', () => {
+  // Teland and Ostaril are the Oriental powers; the League and the shared world stand alone.
+  const grouped = updateTrack(updateTrack(coast, 0, { group: 'Oriental powers' }), 1, { group: 'Oriental powers' });
+  const view = fitted();
+
+  it('heads neighbouring tracks of one group with its name', () => {
+    const plain = layoutTimeline(coast, gregorian, view);
+    const laid = layoutTimeline(grouped, gregorian, view);
+    expect(plain.groups).toEqual([]);
+    expect(laid.groups).toHaveLength(1);
+    expect(laid.groups[0]).toMatchObject({ name: 'Oriental powers', y: o.eraHeight, height: o.groupHeight, collapsed: false, tracks: [0, 1], items: 2 + 4 + 1 + 3 });
+    // Everything below moves down by the height of the group's row, and nothing else changes.
+    expect(laid.tracks.map((track) => track.y)).toEqual(plain.tracks.map((track) => track.y + o.groupHeight));
+    expect(laid.height).toBe(plain.height + o.groupHeight);
+    expect(laid.tracks.map((track) => [track.group, track.hidden])).toEqual([['Oriental powers', false], ['Oriental powers', false], ['', false], ['', false]]);
+    expect(groupNames(grouped)).toEqual(['Oriental powers']);
+    expect(groupNames(coast)).toEqual([]);
+  });
+
+  it('folds a group away: its tracks take no room and its row says what they cover', () => {
+    const open = layoutTimeline(grouped, gregorian, view);
+    const laid = layoutTimeline(grouped, gregorian, view, { collapsed: ['Oriental powers'] });
+    expect(laid.groups[0]!.collapsed).toBe(true);
+    expect(laid.tracks.slice(0, 2).map((track) => [track.hidden, track.height, track.spans.length, track.events.length])).toEqual([[true, 0, 0, 0], [true, 0, 0, 0]]);
+    expect(laid.tracks[2]!.y).toBe(o.eraHeight + o.groupHeight);
+    expect(laid.height).toBe(open.height - open.tracks[0]!.height - open.tracks[1]!.height);
+    // The bar runs from the earliest thing in the group (1622) to the edge of the view: the republic is still going on.
+    expect(laid.groups[0]!.x).toBeCloseTo(xOf(view, yearStart(gregorian, 1622)), 6);
+    expect(laid.groups[0]!.x! + laid.groups[0]!.w).toBe(1000);
+    expect([...hiddenTracks(grouped, ['Oriental powers'])]).toEqual([0, 1]);
+    expect([...hiddenTracks(grouped, ['Somewhere else'])]).toEqual([]);
+    expect(layoutTimeline(grouped, gregorian, view, { collapsed: ['Somewhere else'] })).toEqual(open);
+  });
+
+  it('makes two groups of two runs with the same name', () => {
+    const split = updateTrack(updateTrack(coast, 0, { group: 'West' }), 2, { group: 'West' });
+    const laid = layoutTimeline(split, gregorian, view);
+    expect(laid.groups.map((group) => [group.name, group.tracks])).toEqual([['West', [0]], ['West', [2]]]);
+    // Folding the name folds both runs.
+    expect(layoutTimeline(split, gregorian, view, { collapsed: ['West'] }).tracks.map((track) => track.hidden)).toEqual([true, false, true, false]);
+  });
+
+  it('keeps the keyboard to what is on screen', () => {
+    const all = navOrder(grouped, gregorian);
+    const shown = navOrder(grouped, gregorian, hiddenTracks(grouped, ['Oriental powers']));
+    expect(all.length - shown.length).toBe(10);
+    expect(shown.every((item) => item.ref.kind === 'era' || item.ref.track >= 2)).toBe(true);
+  });
+
+  it('travels in the link, the sheet and the words', () => {
+    expect(timelineFromLink(timelineLink('https://time.eurth.org/', grouped, true))!.timeline).toEqual(grouped);
+    const sheet = timelineFromCsv(timelineCsv(grouped, gregorian))!.timeline;
+    expect(sheet.tracks.map((track) => [track.name, track.group])).toEqual([['Teland', 'Oriental powers'], ['Ostaril', 'Oriental powers'], ['Coastal League', ''], ['Shared world', '']]);
+    expect(descriptionText(describeTimeline(grouped, gregorian))).toContain('\n\nTeland (Oriental powers)\n- ');
+    expect(descriptionText(describeTimeline(grouped, gregorian))).toContain('\n\nCoastal League\n- ');
+    // A group's name is cleaned like any other text.
+    expect(updateTrack(coast, 0, { group: `  Too   long ${'x'.repeat(200)}` }).tracks[0]!.group.length).toBe(80);
+    expect(normalizeTimeline({ tracks: [{ name: 'T', group: 7 }] }).timeline.tracks[0]!.group).toBe('');
+  });
+
+  it('shows in the picture, folded or not', () => {
+    const open = timelineSvg(grouped, gregorian, view, { theme: TEST_THEME }).svg;
+    const shut = timelineSvg(grouped, gregorian, view, { theme: TEST_THEME, layout: { collapsed: ['Oriental powers'] } }).svg;
+    readXml(open);
+    readXml(shut);
+    expect(open).toContain('>Oriental powers</text>');
+    expect(open).toContain('>House Delmaris</text>');
+    expect(shut).toContain('>Oriental powers · 2 tracks folded away</text>');
+    expect(shut).not.toContain('>House Delmaris</text>');
+    expect(shut).not.toContain('>Teland</text>');
+    expect(shut).toContain('>Coastal League</text>');
   });
 });

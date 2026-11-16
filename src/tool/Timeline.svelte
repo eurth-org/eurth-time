@@ -46,7 +46,7 @@ import { timelineCsv, timelineFromCsv } from './csv';
   import { GREGORIAN_CALENDAR, engineFor, type CalendarData } from './engine';
   import { dateOfDay, dateRange, formatDate, isBeforeBigBang, parseDate, type FuzzyDate } from './fuzzy';
   import { canRedo, canUndo, record, redo, startHistory, undo } from './history';
-  import { extentOf, guessWidth, type LayoutOptions } from './layout';
+  import { extentOf, groupNames, guessWidth, hiddenTracks, type LayoutOptions } from './layout';
   import { encodeTimeline, linkFits, timelineFromLink, timelineLink } from './link';
   import { LIMITS, TRACK_KINDS, emptyTimeline, getItem, sameRef, titleOf, type Ref, type Timeline, type Track, type TrackKind } from './model';
   import { KEY_HELP, move, navOrder, revealView, type KeyAction } from './nav';
@@ -99,9 +99,13 @@ import { reviewTimeline } from './review';
   const engine = $derived(engineFor(timeline.calendar));
   /** The second calendar the axis and the cards are read in, when there is one. */
   const also = $derived(timeline.also === null ? null : engineFor(timeline.also));
-  const options = $derived<Partial<LayoutOptions>>({ ...SCREEN, measure });
+  /** The groups folded away, by name. For the visit only: a link always opens with every track showing. */
+  let folded = $state.raw<string[]>([]);
+  const collapsed = $derived(folded.filter((name) => timeline.tracks.some((one) => one.group === name)));
+  const hidden = $derived(hiddenTracks(timeline, collapsed));
+  const options = $derived<Partial<LayoutOptions>>({ ...SCREEN, measure, collapsed });
   const description = $derived(describeTimeline(timeline, engine));
-  const order = $derived(navOrder(timeline, engine));
+  const order = $derived(navOrder(timeline, engine, hidden));
   const card = $derived(selected === null ? null : describeItem(timeline, engine, selected));
   const track = $derived(selectedTrack === null ? null : (timeline.tracks[selectedTrack] ?? null));
   const empty = $derived(timeline.tracks.length === 0 && timeline.eras.length === 0);
@@ -236,8 +240,23 @@ import { reviewTimeline } from './review';
   }
 
   function show(ref: Ref) {
+    // A thing on a track that is folded away: bring its group back first.
+    const group = ref.kind === 'era' ? '' : (timeline.tracks[ref.track]?.group ?? '');
+    if (group !== '') folded = folded.filter((name) => name !== group);
     pick(ref);
     reveal(ref);
+  }
+
+  function toggleGroup(name: string) {
+    const folding = !folded.includes(name);
+    folded = folding ? [...folded, name] : folded.filter((one) => one !== name);
+    if (!folding) return;
+    // What is folded away can't stay selected.
+    const gone = (ref: Ref | null) => ref !== null && ref.kind !== 'era' && timeline.tracks[ref.track]?.group === name;
+    if (gone(selected)) selected = null;
+    if (gone(active)) active = null;
+    if (selectedTrack !== null && timeline.tracks[selectedTrack]?.group === name) selectedTrack = null;
+    editing = false;
   }
 
   function zoom(factor: number) {
@@ -505,7 +524,7 @@ import { reviewTimeline } from './review';
     const chosen = getPrefs().theme;
     const dark = chosen === 'dark' || (chosen === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
     const theme = svgTheme(resolveColors(tokens, dark ? 'dark' : 'light'), tokens.type.families);
-    return { ...timelineSvg(timeline, engine, resizeView(view, 1200), { theme, also }), background: theme.background };
+    return { ...timelineSvg(timeline, engine, resizeView(view, 1200), { theme, also, layout: { collapsed } }), background: theme.background };
   }
 
   const slug = $derived(fileSlug(timeline.title, 'timeline'));
@@ -613,7 +632,7 @@ import { reviewTimeline } from './review';
 
   async function print() {
     const light = svgTheme(resolveColors(tokens, 'light'), tokens.type.families);
-    const sheets = printSheets(timeline, engine, { first: view.start, last: view.end }, sheetCount, light, { also });
+    const sheets = printSheets(timeline, engine, { first: view.start, last: view.end }, sheetCount, light, { also, layout: { collapsed } });
     const holder = document.createElement('div');
     holder.className = 'time-sheets';
     for (const sheet of sheets) {
@@ -677,7 +696,7 @@ import { reviewTimeline } from './review';
   {/if}
 
   <div class="eu-card sheet">
-    <Chart {timeline} {engine} {also} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ongrab={settle} ontrack={(index) => { clear(); selectedTrack = index; }} />
+    <Chart {timeline} {engine} {also} bind:view bind:width {options} {active} {selected} {selectedTrack} readonly={embed} onpick={pick} onkey={key} ongrab={settle} ongroup={toggleGroup} ontrack={(index) => { clear(); selectedTrack = index; }} />
     {#if empty}
       <p class="eu-muted">{embed ? 'There is no timeline in this link.' : 'Nothing here yet. Add a track for a nation, then give it an event or a span.'}</p>
     {/if}
@@ -807,6 +826,18 @@ import { reviewTimeline } from './review';
             {/each}
           </select>
         </label>
+        {#key `${index}:${track.group}`}
+          <label class="eu-field">
+            <span class="eu-label">Group</span>
+            <input class="eu-input" value={track.group} maxlength={LIMITS.name} autocomplete="off" list="time-groups" placeholder="None" aria-describedby="time-group-help" onchange={(event) => commit(updateTrack(timeline, index, { group: event.currentTarget.value }))} />
+            <datalist id="time-groups">
+              {#each groupNames(timeline) as group (group)}
+                <option value={group}></option>
+              {/each}
+            </datalist>
+            <span class="eu-help" id="time-group-help">A continent, an alliance. Tracks next to one another in the same group are headed by its name, and fold away together.</span>
+          </label>
+        {/key}
         <div class="eu-row">
           <button type="button" class="eu-btn" disabled={index === 0} onclick={() => shiftTrack(index, -1)}><Icon icon={faArrowUp} /> Move up</button>
           <button type="button" class="eu-btn" disabled={index === timeline.tracks.length - 1} onclick={() => shiftTrack(index, 1)}><Icon icon={faArrowDown} /> Move down</button>

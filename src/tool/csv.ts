@@ -9,7 +9,7 @@ import { decodeDate, encodeDate, formatDate, parseDate } from './fuzzy';
 import { getItem, type Era, type Span, type TimeEvent, type Timeline } from './model';
 import { normalizeTimeline, type Issue } from './normalize';
 
-export const CSV_COLUMNS = ['type', 'track', 'title', 'from', 'to', 'from_code', 'to_code', 'duration', 'text', 'links'] as const;
+export const CSV_COLUMNS = ['type', 'track', 'title', 'from', 'to', 'from_code', 'to_code', 'duration', 'text', 'links', 'group'] as const;
 
 /**
  * One cell. Quoted when it must be; and a text that a spreadsheet would run as a formula
@@ -24,7 +24,7 @@ export function csvCell(value: string, guard = true): string {
 export function timelineCsv(timeline: Timeline, engine: DateEngine): string {
   const description = describeTimeline(timeline, engine);
   const lines: string[] = [CSV_COLUMNS.join(',')];
-  const add = (track: string, item: DescribedItem) => {
+  const add = (track: string, item: DescribedItem, group = '') => {
     const source = getItem(timeline, item.ref) as Era | Span | TimeEvent;
     const from = 'date' in source ? source.date : source.from;
     const to = 'date' in source ? source.date : source.to;
@@ -42,11 +42,12 @@ export function timelineCsv(timeline: Timeline, engine: DateEngine): string {
         csvCell(item.duration, false),
         csvCell(item.text),
         csvCell(item.links.map((link) => link.url).join(' '), false),
+        csvCell(group),
       ].join(','),
     );
   };
   for (const era of description.eras) add('', era);
-  for (const track of description.tracks) for (const item of track.items) add(track.name, item);
+  for (const track of description.tracks) for (const item of track.items) add(track.name, item, track.group);
   return `${lines.join('\r\n')}\r\n`;
 }
 
@@ -95,6 +96,7 @@ const COLUMNS = {
   toCode: ['to_code'],
   text: ['text', 'description', 'notes'],
   links: ['links', 'link'],
+  group: ['group'],
 } as const;
 
 /** Takes off the apostrophe the export puts before a text that a spreadsheet would run as a formula. */
@@ -122,7 +124,7 @@ export function timelineFromCsv(text: unknown, calendar: CalendarData = null): {
   /** A date for normalizeTimeline to check: the code if it reads as one, else the words, parsed. */
   const date = (code: string, words: string): unknown => (decodeDate(code) !== null ? code : (parseDate(engine, words) ?? null));
   const eras: unknown[] = [];
-  const tracks = new Map<string, { name: string; spans: unknown[]; events: unknown[] }>();
+  const tracks = new Map<string, { name: string; group: string; spans: unknown[]; events: unknown[] }>();
   const body = rows.slice(1);
   for (const row of body) {
     const cell = (index: number): string => (index < 0 ? '' : (row[index] ?? '').trim());
@@ -140,7 +142,7 @@ export function timelineFromCsv(text: unknown, calendar: CalendarData = null): {
     const name = unguard(cell(at.track)) || 'Imported';
     let track = tracks.get(name.toLowerCase());
     if (track === undefined) {
-      track = { name, spans: [], events: [] };
+      track = { name, group: unguard(cell(at.group)), spans: [], events: [] };
       tracks.set(name.toLowerCase(), track);
     }
     const links = cell(at.links).split(/\s+/).filter((url) => url !== '');

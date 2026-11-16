@@ -44,7 +44,7 @@ export function setAlso(timeline: Timeline, also: CalendarData): Timeline {
 /** Adds a track at the end. */
 export function addTrack(timeline: Timeline, name = '', kind: TrackKind = 'nation'): Timeline {
   if (timeline.tracks.length >= LIMITS.tracks) return timeline;
-  return clean(withTracks(timeline, [...timeline.tracks, { name, kind, spans: [], events: [] }]));
+  return clean(withTracks(timeline, [...timeline.tracks, { name, kind, group: '', spans: [], events: [] }]));
 }
 
 /** Adds whole tracks at the end: reigns from a dynasty, or someone else's nation. */
@@ -52,7 +52,7 @@ export function appendTracks(timeline: Timeline, tracks: readonly Track[]): Time
   return clean(withTracks(timeline, [...timeline.tracks, ...tracks]));
 }
 
-export function updateTrack(timeline: Timeline, index: number, patch: { name?: string; kind?: TrackKind }): Timeline {
+export function updateTrack(timeline: Timeline, index: number, patch: { name?: string; kind?: TrackKind; group?: string }): Timeline {
   const track = timeline.tracks[index];
   if (track === undefined) return timeline;
   return clean(withTracks(timeline, replaceAt(timeline.tracks, index, { ...track, ...patch })));

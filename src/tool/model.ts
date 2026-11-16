@@ -72,6 +72,11 @@ export interface Span {
 export interface Track {
   name: string;
   kind: TrackKind;
+  /**
+   * The group the track belongs to: a continent, an alliance. Tracks next to one another with
+   * the same group are headed by its name and can be folded away together. Empty for none.
+   */
+  group: string;
   spans: Span[];
   events: TimeEvent[];
 }

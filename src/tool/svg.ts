@@ -117,7 +117,16 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
   );
 
   // Track names and the lines between tracks.
+  for (const group of layout.groups) {
+    // The row that heads a group of tracks; folded away, it says how much is under it.
+    const label = group.collapsed ? `${group.name} · ${group.tracks.length} ${group.tracks.length === 1 ? 'track' : 'tracks'} folded away` : group.name;
+    out.push(
+      `<line x1="${n(-gutter)}" y1="${n(group.y)}" x2="${n(view.width)}" y2="${n(group.y)}" stroke="${theme.lineStrong}"/>`,
+      text(-gutter, baseline(group.y, group.height), fitText(label, gutter + view.width, (t) => o.measure(t, true)), `${sans} font-weight="700" fill="${theme.muted}"`),
+    );
+  }
   for (const track of layout.tracks) {
+    if (track.hidden) continue;
     out.push(
       `<line x1="${n(-gutter)}" y1="${n(track.y)}" x2="${n(view.width)}" y2="${n(track.y)}" stroke="${theme.line}"/>`,
       text(-gutter, track.y + o.trackPad + 20, fitText(track.name, gutter - 12, (t) => o.measure(t, true) * (14 / SIZE)), `font-family="${escapeXml(theme.sans)}" font-size="14" font-weight="700" fill="${theme.ink}"`),
@@ -132,7 +141,7 @@ export function timelineSvg(timeline: Timeline, engine: DateEngine, view: View, 
   }
 
   out.push('<g clip-path="url(#time-plot)">');
-  const top = layout.tracks[0]?.y ?? layout.axisY;
+  const top = Math.min(layout.tracks[0]?.y ?? layout.axisY, layout.groups[0]?.y ?? layout.axisY);
   for (const tick of ticks(engine, view, options.ticks)) {
     if (tick.opacity <= 0) continue;
     out.push(`<line x1="${n(tick.x)}" y1="${n(top)}" x2="${n(tick.x)}" y2="${n(layout.axisY + 5)}" stroke="${theme.line}" stroke-opacity="${n(tick.opacity)}"/>`);

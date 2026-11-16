@@ -189,7 +189,7 @@ export function normalizeTimeline(input: unknown): { timeline: Timeline; issues:
       });
     });
     const kind = TRACK_KINDS.includes(item.kind as TrackKind) ? (item.kind as TrackKind) : 'nation';
-    tracks.push({ name: cleanText(item.name, LIMITS.name) || `Track ${tracks.length + 1}`, kind, spans, events });
+    tracks.push({ name: cleanText(item.name, LIMITS.name) || `Track ${tracks.length + 1}`, kind, group: cleanText(item.group, LIMITS.name), spans, events });
   });
   if (trackList.length > LIMITS.tracks) issues.push({ path: 'tracks', message: `A timeline holds at most ${LIMITS.tracks} tracks; the rest were left out.` });
   if (overfull) {
